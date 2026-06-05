@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   stopBtn: {
-    backgroundColor: '#EF4444',
+    backgroundColor: colors.black,
     paddingVertical: spacing.md + 2,
     borderRadius: radius.pill,
     alignItems: 'center',

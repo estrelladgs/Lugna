@@ -1,11 +1,19 @@
 import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BottomTabBarProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeScreen from '../screens/home/HomeScreen';
 import RoutineListScreen from '../screens/routines/RoutineListScreen';
 import ProgressScreen from '../screens/progress/ProgressScreen';
 import PostureNavigator from './PostureNavigator';
 import { colors } from '../theme';
+import {
+  CamaraIcon,
+  ClasesIcon,
+  InicioIcon,
+  PerfilIcon,
+  ProgramasIcon,
+} from '../components/icons/TabIcons';
 
 export type AppTabParamList = {
   Home: undefined;
@@ -16,39 +24,132 @@ export type AppTabParamList = {
 
 const Tab = createBottomTabNavigator<AppTabParamList>();
 
+const TAB_HEIGHT = 64;
+
+function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets();
+  const barHeight = TAB_HEIGHT + insets.bottom;
+
+  return (
+    <View style={{ overflow: 'visible' }}>
+      {/* Floating camera button */}
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Posture')}
+        style={[styles.floatingCamera, { bottom: barHeight + 12 }]}
+        activeOpacity={0.85}
+      >
+        <CamaraIcon size={30} />
+      </TouchableOpacity>
+
+      {/* Tab bar */}
+      <View style={[styles.tabBar, { height: barHeight, paddingBottom: insets.bottom }]}>
+        {state.routes.map((route, index) => {
+          const { options } = descriptors[route.key];
+          const isFocused = state.index === index;
+          const color = isFocused ? colors.black : colors.textMuted;
+
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+            }
+          };
+
+          return (
+            <TouchableOpacity
+              key={route.key}
+              onPress={onPress}
+              style={styles.tabItem}
+              activeOpacity={0.7}
+            >
+              {options.tabBarIcon?.({ focused: isFocused, color, size: 24 })}
+              <Text style={[styles.tabLabel, { color }]}>{options.title ?? route.name}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 export default function AppNavigator() {
   return (
     <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.white,
-          borderTopColor: colors.inputBorder,
-        },
-        tabBarActiveTintColor: colors.black,
-        tabBarInactiveTintColor: colors.textMuted,
-      }}
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
     >
       <Tab.Screen
         name="Home"
         component={HomeScreen}
-        options={{ title: 'Inicio', tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>🏠</Text> }}
+        options={{
+          title: 'Inicio',
+          tabBarIcon: ({ color }) => <InicioIcon color={color} size={24} />,
+        }}
       />
       <Tab.Screen
         name="Routines"
         component={RoutineListScreen}
-        options={{ title: 'Rutinas', tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>📋</Text> }}
+        options={{
+          title: 'Programas',
+          tabBarIcon: ({ color }) => <ProgramasIcon color={color} size={24} />,
+        }}
       />
       <Tab.Screen
         name="Posture"
         component={PostureNavigator}
-        options={{ title: 'Postura', tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>🧘</Text> }}
+        options={{
+          title: 'Clases',
+          tabBarIcon: ({ color }) => <ClasesIcon color={color} size={24} />,
+        }}
       />
       <Tab.Screen
         name="Progress"
         component={ProgressScreen}
-        options={{ title: 'Progreso', tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>📈</Text> }}
+        options={{
+          title: 'Perfil',
+          tabBarIcon: ({ color }) => <PerfilIcon color={color} size={24} />,
+        }}
       />
     </Tab.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: colors.white,
+    borderTopWidth: 1,
+    borderTopColor: colors.inputBorder,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 10,
+    gap: 4,
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  floatingCamera: {
+    position: 'absolute',
+    right: 20,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 6,
+    zIndex: 100,
+  },
+});
