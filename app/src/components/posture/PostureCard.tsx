@@ -12,9 +12,9 @@ interface Props {
 
 export default function PostureCard({ posture, onPress }: Props) {
   const difficultyColor: Record<string, string> = {
-    beginner: '#22C55E',
-    intermediate: '#F59E0B',
-    advanced: '#EF4444',
+    beginner: colors.scoreHigh,
+    intermediate: colors.scoreMedium,
+    advanced: colors.scoreLow,
   };
 
   return (

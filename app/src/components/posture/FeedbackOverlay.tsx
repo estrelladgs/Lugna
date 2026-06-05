@@ -8,7 +8,7 @@ interface Props {
 }
 
 export default function FeedbackOverlay({ feedback }: Props) {
-  const bgColor = feedback.isCorrect ? 'rgba(34,197,94,0.85)' : 'rgba(239,68,68,0.85)';
+  const bgColor = feedback.isCorrect ? 'rgba(47,79,117,0.85)' : 'rgba(154,156,194,0.85)';
 
   return (
     <View style={styles.container}>
@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
   correctionsPanel: {
-    backgroundColor: 'rgba(0,0,0,0.65)',
+    backgroundColor: 'rgba(47,79,117,0.75)',
     borderRadius: radius.md,
     padding: spacing.md,
     alignSelf: 'stretch',

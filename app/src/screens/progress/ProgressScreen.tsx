@@ -9,7 +9,7 @@ function SessionItem({ session }: { session: PostureSession }) {
     day: '2-digit', month: 'short', year: 'numeric',
   });
   const scoreColor =
-    session.averageScore >= 80 ? '#22C55E' : session.averageScore >= 50 ? '#F59E0B' : '#EF4444';
+    session.averageScore >= 80 ? colors.scoreHigh : session.averageScore >= 50 ? colors.scoreMedium : colors.scoreLow;
 
   return (
     <View style={styles.card}>
@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: spacing.xl, paddingTop: spacing.xxl + spacing.lg },
   title: { marginBottom: spacing.lg },
   loader: { marginTop: spacing.xl },
-  error: { color: '#EF4444', textAlign: 'center', marginTop: spacing.lg },
+  error: { color: colors.scoreLow, textAlign: 'center', marginTop: spacing.lg },
   empty: { textAlign: 'center', opacity: 0.6, marginTop: spacing.xl },
   card: {
     backgroundColor: colors.white,

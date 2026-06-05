@@ -17,10 +17,10 @@ export default function PostureResultScreen() {
 
   const scoreColor =
     session.averageScore >= 80
-      ? '#22C55E'
+      ? colors.scoreHigh
       : session.averageScore >= 50
-      ? '#F59E0B'
-      : '#EF4444';
+      ? colors.scoreMedium
+      : colors.scoreLow;
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
