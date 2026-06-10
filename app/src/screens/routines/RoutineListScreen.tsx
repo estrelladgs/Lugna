@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { api } from '../../services/api';
+import { routineService } from '../../services/routineService';
 import { Routine } from '../../types';
 import { colors, spacing, radius, typography } from '../../theme';
 
@@ -16,8 +16,8 @@ export default function RoutineListScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<Routine[]>('/routines')
-      .then(({ data }) => setRoutines(data))
+    routineService.getRoutines()
+      .then(setRoutines)
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);

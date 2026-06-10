@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +13,7 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useAuthStore } from '../../store/authStore';
 import { AppTabParamList } from '../../navigation/AppNavigator';
 import { colors, radius, spacing, typography } from '../../theme';
+import { RachaIcon } from '../../components/icons/TabIcons';
 import {
   ActivityData,
   ContinueRoutine,
@@ -152,14 +154,19 @@ function LiveClassCard({ item }: { item: LiveClass }) {
   const time = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <View style={styles.liveCard}>
+    <TouchableOpacity
+      style={styles.liveCard}
+      activeOpacity={item.enlace ? 0.7 : 1}
+      onPress={() => item.enlace && Linking.openURL(item.enlace)}
+      disabled={!item.enlace}
+    >
       <Text style={styles.liveCardTitle} numberOfLines={1}>
         {item.title} – {time}
       </Text>
       <Text style={styles.liveCardInstructor} numberOfLines={1}>
         {item.instructorName}
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -236,68 +243,77 @@ export default function HomeScreen() {
       contentContainerStyle={styles.container}
       showsVerticalScrollIndicator={false}
     >
-      {/* Greeting */}
-      <Text style={styles.greeting}>¡Hola, {firstName}!</Text>
-
-      {/* Continue training */}
-      {continueRoutine && continueRoutine.id ? (
-        <ContinueCard
-          routine={continueRoutine}
-          onPress={() => navigation.navigate('Routines')}
-        />
-      ) : (
-        <TouchableOpacity
-          style={styles.continueCard}
-          onPress={() => navigation.navigate('Routines')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.sectionTitle}>Continuar entrenamiento</Text>
-          <Text style={[typography.body, { opacity: 0.6, marginTop: 4 }]}>
-            Explora tus rutinas de pilates
-          </Text>
-        </TouchableOpacity>
-      )}
-
-      {/* Live classes */}
-      <Text style={styles.sectionTitle}>Próximas clases en directo</Text>
-      {liveClasses.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.carouselContent}
-          style={styles.carousel}
-        >
-          {liveClasses.map((item) => (
-            <LiveClassCard key={item.id} item={item} />
-          ))}
-        </ScrollView>
-      ) : (
-        <View style={styles.emptyLive}>
-          <Text style={[typography.body, { opacity: 0.5 }]}>No hay clases programadas</Text>
-        </View>
-      )}
-
-      {/* Progress */}
-      <Text style={styles.sectionTitle}>Tu progreso</Text>
-      <View style={styles.progressRow}>
-        {/* Calendar */}
-        <View style={styles.progressCard}>
-          <MiniCalendar activeDays={activity.activeDays} />
-          <Text style={styles.streakText}>
-            {activity.streakDays} día{activity.streakDays !== 1 ? 's' : ''} seguido{activity.streakDays !== 1 ? 's' : ''} de actividad 🔥
-          </Text>
-        </View>
-
-        {/* Donut chart */}
-        <View style={[styles.progressCard, styles.progressCardChart]}>
-          <DonutChart percentage={progress.percentage} />
-          <Text style={styles.levelsText}>
-            {Math.round(progress.percentage)}% de los niveles completados
-          </Text>
-        </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.greeting}>¡Hola, {firstName}!</Text>
+        <Text style={styles.continueSectionTitle}>Continuar entrenamiento</Text>
       </View>
 
-      <View style={{ height: 100 }} />
+      {/* Continue training (floating over header) */}
+      <View style={styles.continueCardWrapper}>
+        {continueRoutine && continueRoutine.id ? (
+          <ContinueCard
+            routine={continueRoutine}
+            onPress={() => navigation.navigate('Routines')}
+          />
+        ) : (
+          <TouchableOpacity
+            style={styles.continueCard}
+            onPress={() => navigation.navigate('Routines')}
+            activeOpacity={0.85}
+          >
+            <Text style={[typography.body, { opacity: 0.6 }]}>
+              Explora tus rutinas de pilates
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <View style={styles.body}>
+        {/* Live classes */}
+        <Text style={styles.sectionTitle}>Próximas clases en directo</Text>
+        {liveClasses.length > 0 ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.carouselContent}
+            style={styles.carousel}
+          >
+            {liveClasses.map((item) => (
+              <LiveClassCard key={item.id} item={item} />
+            ))}
+          </ScrollView>
+        ) : (
+          <View style={styles.emptyLive}>
+            <Text style={[typography.body, { opacity: 0.5 }]}>No hay clases programadas</Text>
+          </View>
+        )}
+
+        {/* Progress */}
+        <Text style={styles.sectionTitle}>Tu progreso</Text>
+        <View style={styles.progressRow}>
+          {/* Calendar */}
+          <View style={styles.progressCard}>
+            <MiniCalendar activeDays={activity.activeDays} />
+            <View style={styles.streakRow}>
+              <RachaIcon size={18} />
+              <Text style={styles.streakText}>
+                {activity.streakDays} día{activity.streakDays !== 1 ? 's' : ''} seguido{activity.streakDays !== 1 ? 's' : ''} de actividad
+              </Text>
+            </View>
+          </View>
+
+          {/* Donut chart */}
+          <View style={[styles.progressCard, styles.progressCardChart]}>
+            <DonutChart percentage={progress.percentage} />
+            <Text style={styles.levelsText}>
+              {Math.round(progress.percentage)}% de los niveles completados
+            </Text>
+          </View>
+        </View>
+
+        <View style={{ height: 100 }} />
+      </View>
     </ScrollView>
   );
 }
@@ -306,21 +322,49 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.background },
-  container: { paddingTop: 56, paddingHorizontal: spacing.lg },
+  container: { paddingBottom: 0 },
 
+  // Header
+  header: {
+    backgroundColor: colors.header,
+    paddingTop: 56,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 64,
+  },
   greeting: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '800',
     color: colors.black,
     marginBottom: spacing.md,
   },
+  continueSectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.black,
+  },
+
+  // Body
+  body: {
+    paddingHorizontal: spacing.lg,
+  },
 
   // Continue card
+  continueCardWrapper: {
+    marginHorizontal: spacing.lg,
+    marginTop: -44,
+    marginBottom: spacing.lg,
+  },
   continueCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
+    borderWidth: 1.5,
+    borderColor: colors.header,
     borderRadius: radius.md,
     padding: spacing.md,
-    marginBottom: spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
   },
   continueRow: {
     flexDirection: 'row',
@@ -328,24 +372,24 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   yogaIconWrapper: {
-    width: 52,
-    height: 52,
+    width: 56,
+    height: 56,
     borderRadius: radius.sm,
     backgroundColor: colors.backgroundLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
   },
-  yogaEmoji: { fontSize: 28 },
+  yogaEmoji: { fontSize: 30 },
   continueInfo: { flex: 1 },
   continueTitle: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '700',
     color: colors.black,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   continueDuration: {
-    fontSize: 13,
+    fontSize: 14,
     color: colors.textMuted,
     marginTop: 2,
   },
@@ -363,7 +407,7 @@ const styles = StyleSheet.create({
 
   // Section title
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 19,
     fontWeight: '700',
     color: colors.black,
     marginBottom: spacing.sm,
@@ -373,24 +417,28 @@ const styles = StyleSheet.create({
   carousel: { marginBottom: spacing.lg },
   carouselContent: { paddingRight: spacing.lg, gap: spacing.sm },
   liveCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.backgroundLight,
     borderRadius: radius.md,
     padding: spacing.md,
-    width: 170,
+    width: 180,
     justifyContent: 'center',
   },
   liveCardTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.black,
     marginBottom: 4,
   },
   liveCardInstructor: {
-    fontSize: 12,
+    fontSize: 13,
     color: colors.textMuted,
   },
   emptyLive: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.backgroundLight,
     borderRadius: radius.md,
     padding: spacing.lg,
     alignItems: 'center',
@@ -405,7 +453,9 @@ const styles = StyleSheet.create({
   },
   progressCard: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.backgroundLight,
     borderRadius: radius.md,
     padding: spacing.sm,
     alignItems: 'center',
@@ -413,15 +463,21 @@ const styles = StyleSheet.create({
   progressCardChart: {
     justifyContent: 'center',
   },
+  streakRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    marginTop: 6,
+  },
   streakText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '600',
     color: colors.black,
     textAlign: 'center',
-    marginTop: 6,
   },
   levelsText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '600',
     color: colors.black,
     textAlign: 'center',
@@ -430,7 +486,7 @@ const styles = StyleSheet.create({
 
   // Calendar
   calendarMonth: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.black,
     textTransform: 'capitalize',
@@ -460,12 +516,12 @@ const styles = StyleSheet.create({
   calendarDayName: {
     width: 22,
     textAlign: 'center',
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '600',
     color: colors.textMuted,
   },
   calendarDayText: {
-    fontSize: 9,
+    fontSize: 10,
     color: colors.black,
   },
   calendarDayTextActive: {

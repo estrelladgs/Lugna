@@ -7,6 +7,7 @@ export interface LiveClass {
   scheduledAt: string;
   durationMinutes: number;
   difficulty: string;
+  enlace?: string;
 }
 
 export interface ActivityData {
@@ -25,6 +26,7 @@ export interface ContinueRoutine {
   name: string;
   durationMinutes: number;
   progressPercent: number;
+  enlace?: string;
 }
 
 export async function getLiveClasses(): Promise<LiveClass[]> {

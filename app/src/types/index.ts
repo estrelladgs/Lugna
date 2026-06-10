@@ -59,7 +59,7 @@ export interface Routine {
   description: string;
   durationMinutes: number;
   difficulty: 'beginner' | 'intermediate' | 'advanced';
-  postures: PostureId[];
+  enlace?: string;
 }
 
 export interface ProgressEntry {

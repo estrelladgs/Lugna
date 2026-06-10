@@ -62,7 +62,30 @@ def list_routines(db: Session = Depends(get_db), _: User = Depends(get_current_u
             description=r.description,
             durationMinutes=int(r.duration_minutes),
             difficulty=r.difficulty,
-            postures=r.postures,
+            enlace=r.enlace,
         )
         for r in routines
     ]
+
+
+@router.post("/routines/{routine_id}/start", response_model=RoutineOut)
+def start_routine(
+    routine_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    routine = db.query(Routine).filter(Routine.id == routine_id).first()
+    if not routine:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rutina no encontrada")
+
+    current_user.last_routine_id = routine.id
+    db.commit()
+
+    return RoutineOut(
+        id=routine.id,
+        name=routine.name,
+        description=routine.description,
+        durationMinutes=int(routine.duration_minutes),
+        difficulty=routine.difficulty,
+        enlace=routine.enlace,
+    )

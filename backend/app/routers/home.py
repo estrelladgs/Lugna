@@ -34,6 +34,7 @@ def get_live_classes(
             scheduledAt=c.scheduled_at.isoformat(),
             durationMinutes=c.duration_minutes,
             difficulty=c.difficulty,
+            enlace=c.enlace,
         )
         for c in classes
     ]
@@ -86,19 +87,9 @@ def get_continue_routine(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    last_session = (
-        db.query(PostureSession)
-        .filter(PostureSession.user_id == current_user.id)
-        .order_by(PostureSession.created_at.desc())
-        .first()
-    )
-
     routine = None
-    if last_session:
-        for r in db.query(Routine).all():
-            if last_session.posture_id in (r.postures or []):
-                routine = r
-                break
+    if current_user.last_routine_id:
+        routine = db.query(Routine).filter(Routine.id == current_user.last_routine_id).first()
 
     if not routine:
         routine = db.query(Routine).first()
@@ -113,4 +104,5 @@ def get_continue_routine(
         name=routine.name,
         durationMinutes=int(routine.duration_minutes),
         progressPercent=0.6,
+        enlace=routine.enlace,
     )

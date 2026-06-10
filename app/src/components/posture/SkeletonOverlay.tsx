@@ -43,7 +43,7 @@ export default function SkeletonOverlay({ landmarks }: Props) {
               key={i}
               x1={posA.x} y1={posA.y}
               x2={posB.x} y2={posB.y}
-              stroke="rgba(240,233,249,0.9)"
+              stroke="rgba(213,233,244,0.9)"
               strokeWidth={2}
             />
           );
@@ -56,7 +56,7 @@ export default function SkeletonOverlay({ landmarks }: Props) {
               key={i}
               cx={pos.x} cy={pos.y}
               r={5}
-              fill="#F0E9F9"
+              fill="#D5E9F4"
               stroke="rgba(153,189,223,0.9)"
               strokeWidth={2}
             />
