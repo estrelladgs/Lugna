@@ -24,7 +24,7 @@ class Routine(Base):
     description = Column(String, nullable=False)
     duration_minutes = Column(String, nullable=False)
     difficulty = Column(String, nullable=False)
-    postures = Column(JSON, nullable=False, default=list)
+    enlace = Column(String, nullable=True)
 
 
 class LiveClass(Base):
@@ -36,3 +36,4 @@ class LiveClass(Base):
     scheduled_at = Column(DateTime, nullable=False)
     duration_minutes = Column(Integer, nullable=False)
     difficulty = Column(String, nullable=False)
+    enlace = Column(String, nullable=True)

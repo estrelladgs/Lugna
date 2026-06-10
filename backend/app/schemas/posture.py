@@ -20,7 +20,7 @@ class RoutineOut(BaseModel):
     description: str
     durationMinutes: int
     difficulty: str
-    postures: List[str]
+    enlace: Optional[str] = None
 
     class Config:
         from_attributes = True

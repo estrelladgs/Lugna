@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { Routine } from '../../types';
+import { routineService } from '../../services/routineService';
 import { colors, spacing, radius, typography } from '../../theme';
 
 type ParamList = { RoutineDetail: { routine: Routine } };
@@ -9,6 +10,17 @@ type ParamList = { RoutineDetail: { routine: Routine } };
 export default function RoutineDetailScreen() {
   const navigation = useNavigation();
   const { params: { routine } } = useRoute<RouteProp<ParamList, 'RoutineDetail'>>();
+
+  const handleStart = async () => {
+    try {
+      await routineService.startRoutine(routine.id);
+    } catch {
+      // continuamos aunque no se pueda guardar el progreso
+    }
+    if (routine.enlace) {
+      Linking.openURL(routine.enlace);
+    }
+  };
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
@@ -22,15 +34,7 @@ export default function RoutineDetailScreen() {
       </Text>
       <Text style={[typography.body, styles.description]}>{routine.description}</Text>
 
-      <Text style={[typography.h3, styles.sectionTitle]}>Posturas ({routine.postures.length})</Text>
-      {routine.postures.map((postureId, index) => (
-        <View key={postureId} style={styles.postureRow}>
-          <Text style={styles.index}>{index + 1}</Text>
-          <Text style={[typography.body, styles.postureName]}>{postureId.replace(/_/g, ' ')}</Text>
-        </View>
-      ))}
-
-      <TouchableOpacity style={styles.startButton} activeOpacity={0.85}>
+      <TouchableOpacity style={styles.startButton} activeOpacity={0.85} onPress={handleStart}>
         <Text style={typography.button}>Comenzar rutina</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -45,18 +49,6 @@ const styles = StyleSheet.create({
   title: { marginBottom: spacing.xs },
   meta: { opacity: 0.6, marginBottom: spacing.md },
   description: { opacity: 0.8, marginBottom: spacing.lg },
-  sectionTitle: { marginBottom: spacing.md },
-  postureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    gap: spacing.md,
-  },
-  index: { fontSize: 16, fontWeight: '700', color: colors.textMuted, width: 24 },
-  postureName: { textTransform: 'capitalize' },
   startButton: {
     marginTop: spacing.xl,
     backgroundColor: colors.white,

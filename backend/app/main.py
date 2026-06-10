@@ -93,7 +93,7 @@ def _seed_db():
                 "description": "Rutina suave para despertar el cuerpo y activar el core al comenzar el día.",
                 "duration_minutes": "20",
                 "difficulty": "beginner",
-                "postures": ["hundred", "roll_up", "spine_stretch", "rolling_like_a_ball"],
+                "enlace": "https://www.youtube.com/watch?v=morning_flow",
             },
             {
                 "id": "core_power",
@@ -101,7 +101,7 @@ def _seed_db():
                 "description": "Entrenamiento intensivo centrado en el trabajo abdominal profundo y la estabilidad.",
                 "duration_minutes": "30",
                 "difficulty": "intermediate",
-                "postures": ["hundred", "single_leg_stretch", "double_leg_stretch", "plank"],
+                "enlace": "https://www.youtube.com/watch?v=core_power",
             },
             {
                 "id": "flexibility_flow",
@@ -109,7 +109,7 @@ def _seed_db():
                 "description": "Sesión dedicada a mejorar la movilidad articular y elongar la musculatura.",
                 "duration_minutes": "25",
                 "difficulty": "beginner",
-                "postures": ["roll_up", "single_leg_circles", "spine_stretch", "rolling_like_a_ball"],
+                "enlace": "https://www.youtube.com/watch?v=flexibility_flow",
             },
             {
                 "id": "full_body",
@@ -117,16 +117,7 @@ def _seed_db():
                 "description": "Rutina equilibrada que trabaja todos los grupos musculares principales de pilates.",
                 "duration_minutes": "45",
                 "difficulty": "intermediate",
-                "postures": [
-                    "hundred",
-                    "roll_up",
-                    "single_leg_circles",
-                    "rolling_like_a_ball",
-                    "single_leg_stretch",
-                    "double_leg_stretch",
-                    "spine_stretch",
-                    "plank",
-                ],
+                "enlace": "https://www.youtube.com/watch?v=full_body",
             },
         ]
 
@@ -146,6 +137,16 @@ def _seed_db():
                     "scheduled_at": base + timedelta(hours=18),
                     "duration_minutes": 45,
                     "difficulty": "advanced",
+                    "enlace": "https://meet.google.com/core-avanzado-hoy",
+                },
+                {
+                    "id": "core_avanzado_paloma",
+                    "title": "Core avanzado",
+                    "instructor_name": "Paloma Domínguez",
+                    "scheduled_at": base + timedelta(days=1, hours=18),
+                    "duration_minutes": 45,
+                    "difficulty": "advanced",
+                    "enlace": "https://meet.google.com/core-avanzado-paloma",
                 },
                 {
                     "id": "pilates_suave_manana",
@@ -154,6 +155,7 @@ def _seed_db():
                     "scheduled_at": base + timedelta(days=1, hours=10),
                     "duration_minutes": 30,
                     "difficulty": "beginner",
+                    "enlace": "https://meet.google.com/pilates-suave-manana",
                 },
                 {
                     "id": "stretching_manana",
@@ -162,6 +164,7 @@ def _seed_db():
                     "scheduled_at": base + timedelta(days=1, hours=17),
                     "duration_minutes": 40,
                     "difficulty": "beginner",
+                    "enlace": "https://meet.google.com/stretching-manana",
                 },
                 {
                     "id": "core_intermedio_2d",
@@ -170,6 +173,7 @@ def _seed_db():
                     "scheduled_at": base + timedelta(days=2, hours=9),
                     "duration_minutes": 45,
                     "difficulty": "intermediate",
+                    "enlace": "https://meet.google.com/core-intermedio-2d",
                 },
                 {
                     "id": "pilates_avanzado_2d",
@@ -178,6 +182,7 @@ def _seed_db():
                     "scheduled_at": base + timedelta(days=2, hours=19),
                     "duration_minutes": 60,
                     "difficulty": "advanced",
+                    "enlace": "https://meet.google.com/pilates-avanzado-2d",
                 },
                 {
                     "id": "flujo_matutino_3d",
@@ -186,6 +191,7 @@ def _seed_db():
                     "scheduled_at": base + timedelta(days=3, hours=8),
                     "duration_minutes": 30,
                     "difficulty": "beginner",
+                    "enlace": "https://meet.google.com/flujo-matutino-3d",
                 },
             ]
             for lc in live_class_data:

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 
@@ -9,6 +9,7 @@ class LiveClassOut(BaseModel):
     scheduledAt: str
     durationMinutes: int
     difficulty: str
+    enlace: Optional[str] = None
 
 
 class ActivityOut(BaseModel):
@@ -27,3 +28,4 @@ class ContinueRoutineOut(BaseModel):
     name: str
     durationMinutes: int
     progressPercent: float
+    enlace: Optional[str] = None
