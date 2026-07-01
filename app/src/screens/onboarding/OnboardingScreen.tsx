@@ -79,6 +79,7 @@ export default function OnboardingScreen() {
         data={SLIDES}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
+        style={{ flex: 1 }}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -88,7 +89,7 @@ export default function OnboardingScreen() {
 
       <View style={styles.footer}>
         <View style={styles.dotsRow}>
-          {[...Array(SLIDES.length + 1)].map((_, i) => (
+          {[...Array(SLIDES.length)].map((_, i) => (
             <View
               key={i}
               style={[styles.dot, i === currentIndex ? styles.dotActive : styles.dotInactive]}
@@ -111,7 +112,7 @@ const styles = StyleSheet.create({
   },
   slide: {
     width,
-    flex: 1,
+    alignSelf: 'stretch',
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.xxl + spacing.xl,

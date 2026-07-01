@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Image,
   Linking,
   ScrollView,
   StyleSheet,
@@ -183,10 +184,10 @@ function ContinueCard({
 
   return (
     <TouchableOpacity style={styles.continueCard} onPress={onPress} activeOpacity={0.85}>
+      <Text style={styles.continueSectionTitle}>Continuar entrenamiento</Text>
       <View style={styles.continueRow}>
-        {/* Yoga figure placeholder */}
         <View style={styles.yogaIconWrapper}>
-          <Text style={styles.yogaEmoji}>🧘</Text>
+          <Image source={require('../../../assets/onboarding1.png')} style={styles.yogaImage} resizeMode="cover" />
         </View>
         <View style={styles.continueInfo}>
           <Text style={styles.continueTitle} numberOfLines={2}>
@@ -246,10 +247,9 @@ export default function HomeScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.greeting}>¡Hola, {firstName}!</Text>
-        <Text style={styles.continueSectionTitle}>Continuar entrenamiento</Text>
       </View>
 
-      {/* Continue training (floating over header) */}
+      {/* Continue card — overlaps bottom half of header */}
       <View style={styles.continueCardWrapper}>
         {continueRoutine && continueRoutine.id ? (
           <ContinueCard
@@ -262,6 +262,7 @@ export default function HomeScreen() {
             onPress={() => navigation.navigate('Routines')}
             activeOpacity={0.85}
           >
+            <Text style={styles.continueSectionTitle}>Continuar entrenamiento</Text>
             <Text style={[typography.body, { opacity: 0.6 }]}>
               Explora tus rutinas de pilates
             </Text>
@@ -291,24 +292,28 @@ export default function HomeScreen() {
 
         {/* Progress */}
         <Text style={styles.sectionTitle}>Tu progreso</Text>
-        <View style={styles.progressRow}>
-          {/* Calendar */}
-          <View style={styles.progressCard}>
-            <MiniCalendar activeDays={activity.activeDays} />
-            <View style={styles.streakRow}>
-              <RachaIcon size={18} />
-              <Text style={styles.streakText}>
-                {activity.streakDays} día{activity.streakDays !== 1 ? 's' : ''} seguido{activity.streakDays !== 1 ? 's' : ''} de actividad
+        <View style={styles.progressCard}>
+          <View style={styles.progressRow}>
+            {/* Calendar */}
+            <View style={styles.progressHalf}>
+              <MiniCalendar activeDays={activity.activeDays} />
+              <View style={styles.streakRow}>
+                <Text style={styles.streakText}>
+                  {activity.streakDays} día{activity.streakDays !== 1 ? 's' : ''} seguido{activity.streakDays !== 1 ? 's' : ''} de actividad
+                </Text>
+                <RachaIcon size={13} />
+              </View>
+            </View>
+
+            {/* Donut chart */}
+            <View style={styles.progressHalf}>
+              <View style={styles.donutWrapper}>
+                <DonutChart percentage={progress.percentage} />
+              </View>
+              <Text style={styles.levelsText}>
+                {Math.round(progress.percentage)}% de los niveles completados
               </Text>
             </View>
-          </View>
-
-          {/* Donut chart */}
-          <View style={[styles.progressCard, styles.progressCardChart]}>
-            <DonutChart percentage={progress.percentage} />
-            <Text style={styles.levelsText}>
-              {Math.round(progress.percentage)}% de los niveles completados
-            </Text>
           </View>
         </View>
 
@@ -329,37 +334,39 @@ const styles = StyleSheet.create({
     backgroundColor: colors.header,
     paddingTop: 56,
     paddingHorizontal: spacing.lg,
-    paddingBottom: 64,
+    paddingBottom: 90,
+    borderBottomLeftRadius: radius.md,
+    borderBottomRightRadius: radius.md,
   },
   greeting: {
     fontSize: 30,
-    fontWeight: '800',
-    color: colors.black,
-    marginBottom: spacing.md,
-  },
-  continueSectionTitle: {
-    fontSize: 20,
     fontWeight: '700',
     color: colors.black,
+    marginBottom: 4,
+  },
+  continueSectionTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: colors.black,
+    marginBottom: spacing.sm,
   },
 
   // Body
   body: {
     paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
   },
 
   // Continue card
   continueCardWrapper: {
     marginHorizontal: spacing.lg,
-    marginTop: -44,
-    marginBottom: spacing.lg,
+    marginTop: -75,
+    marginBottom: spacing.sm,
   },
   continueCard: {
     backgroundColor: colors.background,
-    borderWidth: 1.5,
-    borderColor: colors.header,
     borderRadius: radius.md,
-    padding: spacing.md,
+    padding: spacing.lg,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -369,7 +376,7 @@ const styles = StyleSheet.create({
   continueRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   yogaIconWrapper: {
     width: 56,
@@ -379,12 +386,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
+    overflow: 'hidden',
   },
-  yogaEmoji: { fontSize: 30 },
+  yogaImage: {
+    width: '100%',
+    height: '100%',
+  },
   continueInfo: { flex: 1 },
   continueTitle: {
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '400',
     color: colors.black,
     lineHeight: 22,
   },
@@ -407,8 +418,8 @@ const styles = StyleSheet.create({
 
   // Section title
   sectionTitle: {
-    fontSize: 19,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '600',
     color: colors.black,
     marginBottom: spacing.sm,
   },
@@ -417,12 +428,11 @@ const styles = StyleSheet.create({
   carousel: { marginBottom: spacing.lg },
   carouselContent: { paddingRight: spacing.lg, gap: spacing.sm },
   liveCard: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.backgroundLight,
+    backgroundColor: colors.backgroundLight,
     borderRadius: radius.md,
-    padding: spacing.md,
-    width: 180,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
     justifyContent: 'center',
   },
   liveCardTitle: {
@@ -446,22 +456,27 @@ const styles = StyleSheet.create({
   },
 
   // Progress section
-  progressRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
   progressCard: {
-    flex: 1,
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.backgroundLight,
     borderRadius: radius.md,
     padding: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  progressHalf: {
+    flex: 1,
     alignItems: 'center',
   },
-  progressCardChart: {
+  donutWrapper: {
+    flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
   },
   streakRow: {
     flexDirection: 'row',
