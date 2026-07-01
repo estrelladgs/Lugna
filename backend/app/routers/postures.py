@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.dependencies import get_current_user, get_db
 from app.models.posture import Posture, Routine
+from app.models.session import RoutineSession
 from app.models.user import User
 from app.schemas.posture import AnalyzeRequest, PostureFeedbackOut, PostureOut, RoutineOut
 from app.services.analysis import analyze_posture
@@ -79,6 +80,7 @@ def start_routine(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rutina no encontrada")
 
     current_user.last_routine_id = routine.id
+    db.add(RoutineSession(user_id=current_user.id, routine_id=routine.id))
     db.commit()
 
     return RoutineOut(

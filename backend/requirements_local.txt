@@ -8,6 +8,7 @@ python-multipart==0.0.12
 pydantic-settings==2.7.0
 pydantic[email]==2.10.3
 python-dotenv==1.0.1
+alembic==1.14.0
 
 # Análisis de postura con IA (opcional — si no están disponibles se usa un mock)
 # mediapipe==0.10.18

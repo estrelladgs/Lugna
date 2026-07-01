@@ -4,6 +4,12 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 from app.database import Base
 import app.models  # noqa: F401 – ensure models are registered
 

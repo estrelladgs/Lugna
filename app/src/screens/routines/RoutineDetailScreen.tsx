@@ -53,7 +53,7 @@ export default function RoutineDetailScreen() {
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-        <Text style={styles.backText}>← Volver</Text>
+        <Text style={styles.backText}> ← Volver</Text>
       </TouchableOpacity>
 
       {thumbnail && (
@@ -89,7 +89,7 @@ export default function RoutineDetailScreen() {
 
         <TouchableOpacity style={styles.startButton} activeOpacity={0.85} onPress={handleStart}>
           <Text style={typography.button}>
-            {routine.enlace ? 'Comenzar rutina ▶' : 'Comenzar rutina'}
+            {routine.enlace ? 'Comenzar rutina →' : 'Comenzar rutina'}
           </Text>
         </TouchableOpacity>
       </View>

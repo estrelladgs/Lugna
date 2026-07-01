@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.dependencies import get_current_user, get_db
 from app.models.posture import LiveClass, Posture, Routine
-from app.models.session import PostureSession
+from app.models.session import PostureSession, RoutineSession
 from app.models.user import User
 from app.schemas.home import ActivityOut, ContinueRoutineOut, LiveClassOut, ProgressOut
 
@@ -70,13 +70,13 @@ def get_progress(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    total = db.query(Posture).count()
+    total = db.query(Routine).count()
     sessions = (
-        db.query(PostureSession)
-        .filter(PostureSession.user_id == current_user.id)
+        db.query(RoutineSession)
+        .filter(RoutineSession.user_id == current_user.id)
         .all()
     )
-    completed = len({s.posture_id for s in sessions})
+    completed = len({s.routine_id for s in sessions})
     percentage = round(completed / total * 100, 1) if total > 0 else 0.0
 
     return ProgressOut(completedLevels=completed, totalLevels=total, percentage=percentage)
