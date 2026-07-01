@@ -7,203 +7,206 @@ from app.database import Base, engine, SessionLocal
 from app.routers import auth, home, postures, sessions
 
 
-TEST_ENLACE = "https://www.youtube.com/watch?v=0_sO9T3-9bY"
-
-
 def _seed_db():
-    """Insert initial posture, routine and live-class data if tables are empty."""
+    """
+    Seed strategy:
+    - Postures : insert once (never overwrite).
+    - Routines : upsert on every startup — edit here and restart to apply changes.
+    - Live classes : replace on every startup so scheduled times stay in the future.
+    """
+    from datetime import datetime, timedelta
     from app.models.posture import LiveClass, Posture, Routine
 
     db = SessionLocal()
     try:
-        # Always sync enlace so thumbnails work in testing
-        if db.query(Routine).count() > 0:
-            db.query(Routine).update({"enlace": TEST_ENLACE})
-            db.commit()
 
-        if db.query(Posture).count() > 0:
-            return
+        # ── Postures (seed once) ──────────────────────────────────────────────
+        if db.query(Posture).count() == 0:
+            posture_data = [
+                {
+                    "id": "hundred",
+                    "name": "El Cien",
+                    "description": "Ejercicio clásico de pilates para calentar y activar el core. Se realizan 100 bombeos de brazos con las piernas extendidas a 45°.",
+                    "difficulty": "beginner",
+                    "muscle_groups": ["core", "abdominales", "cadera flexora"],
+                    "image_url": None,
+                },
+                {
+                    "id": "roll_up",
+                    "name": "Roll Up",
+                    "description": "Articulación completa de la columna desde tumbado hasta sentado. Trabaja la flexibilidad de la columna y la fuerza abdominal.",
+                    "difficulty": "beginner",
+                    "muscle_groups": ["abdominales", "columna", "isquiotibiales"],
+                    "image_url": None,
+                },
+                {
+                    "id": "single_leg_circles",
+                    "name": "Círculos de Pierna",
+                    "description": "Una pierna describe círculos en el aire manteniendo la pelvis estable. Mejora la movilidad de cadera y el control pélvico.",
+                    "difficulty": "beginner",
+                    "muscle_groups": ["cadera", "pelvis", "core"],
+                    "image_url": None,
+                },
+                {
+                    "id": "rolling_like_a_ball",
+                    "name": "Rodar como una Pelota",
+                    "description": "Masajea la columna rodando hacia atrás y regresando al equilibrio. Requiere una curva en C profunda.",
+                    "difficulty": "beginner",
+                    "muscle_groups": ["columna", "core", "espalda"],
+                    "image_url": None,
+                },
+                {
+                    "id": "single_leg_stretch",
+                    "name": "Estiramiento de una Pierna",
+                    "description": "Alternancia de piernas con la cabeza y hombros elevados. Desarrolla la coordinación y estabilidad del core.",
+                    "difficulty": "intermediate",
+                    "muscle_groups": ["core", "cadera flexora", "abdominales"],
+                    "image_url": None,
+                },
+                {
+                    "id": "double_leg_stretch",
+                    "name": "Estiramiento de dos Piernas",
+                    "description": "Extensión coordinada de brazos y piernas desde posición de rodillas al pecho. Exige gran control abdominal.",
+                    "difficulty": "intermediate",
+                    "muscle_groups": ["abdominales", "core", "cadera flexora", "hombros"],
+                    "image_url": None,
+                },
+                {
+                    "id": "spine_stretch",
+                    "name": "Estiramiento de Columna",
+                    "description": "Sentado con piernas abiertas, se estira la columna hacia adelante. Alarga la columna y estira los isquiotibiales.",
+                    "difficulty": "beginner",
+                    "muscle_groups": ["columna", "isquiotibiales", "espalda"],
+                    "image_url": None,
+                },
+                {
+                    "id": "plank",
+                    "name": "Plancha",
+                    "description": "Posición isométrica de sostén con el cuerpo en línea recta. Fortalece el core completo y mejora la estabilidad.",
+                    "difficulty": "intermediate",
+                    "muscle_groups": ["core", "hombros", "brazos", "glúteos"],
+                    "image_url": None,
+                },
+            ]
+            for p in posture_data:
+                db.add(Posture(**p))
+            db.flush()
 
-        posture_data = [
-            {
-                "id": "hundred",
-                "name": "El Cien",
-                "description": "Ejercicio clásico de pilates para calentar y activar el core. Se realizan 100 bombeos de brazos con las piernas extendidas a 45°.",
-                "difficulty": "beginner",
-                "muscle_groups": ["core", "abdominales", "cadera flexora"],
-                "image_url": None,
-            },
-            {
-                "id": "roll_up",
-                "name": "Roll Up",
-                "description": "Articulación completa de la columna desde tumbado hasta sentado. Trabaja la flexibilidad de la columna y la fuerza abdominal.",
-                "difficulty": "beginner",
-                "muscle_groups": ["abdominales", "columna", "isquiotibiales"],
-                "image_url": None,
-            },
-            {
-                "id": "single_leg_circles",
-                "name": "Círculos de Pierna",
-                "description": "Una pierna describe círculos en el aire manteniendo la pelvis estable. Mejora la movilidad de cadera y el control pélvico.",
-                "difficulty": "beginner",
-                "muscle_groups": ["cadera", "pelvis", "core"],
-                "image_url": None,
-            },
-            {
-                "id": "rolling_like_a_ball",
-                "name": "Rodar como una Pelota",
-                "description": "Masajea la columna rodando hacia atrás y regresando al equilibrio. Requiere una curva en C profunda.",
-                "difficulty": "beginner",
-                "muscle_groups": ["columna", "core", "espalda"],
-                "image_url": None,
-            },
-            {
-                "id": "single_leg_stretch",
-                "name": "Estiramiento de una Pierna",
-                "description": "Alternancia de piernas con la cabeza y hombros elevados. Desarrolla la coordinación y estabilidad del core.",
-                "difficulty": "intermediate",
-                "muscle_groups": ["core", "cadera flexora", "abdominales"],
-                "image_url": None,
-            },
-            {
-                "id": "double_leg_stretch",
-                "name": "Estiramiento de dos Piernas",
-                "description": "Extensión coordinada de brazos y piernas desde posición de rodillas al pecho. Exige gran control abdominal.",
-                "difficulty": "intermediate",
-                "muscle_groups": ["abdominales", "core", "cadera flexora", "hombros"],
-                "image_url": None,
-            },
-            {
-                "id": "spine_stretch",
-                "name": "Estiramiento de Columna",
-                "description": "Sentado con piernas abiertas, se estira la columna hacia adelante. Alarga la columna y estira los isquiotibiales.",
-                "difficulty": "beginner",
-                "muscle_groups": ["columna", "isquiotibiales", "espalda"],
-                "image_url": None,
-            },
-            {
-                "id": "plank",
-                "name": "Plancha",
-                "description": "Posición isométrica de sostén con el cuerpo en línea recta. Fortalece el core completo y mejora la estabilidad.",
-                "difficulty": "intermediate",
-                "muscle_groups": ["core", "hombros", "brazos", "glúteos"],
-                "image_url": None,
-            },
-        ]
-
-        for p in posture_data:
-            db.add(Posture(**p))
-
+        # ── Routines (upsert — edit & restart to update) ─────────────────────
+        # To ADD a routine: add a new dict with a unique id.
+        # To EDIT a routine: change any field and restart the backend.
+        # To DELETE a routine: remove the dict (won't auto-delete; do it manually in the DB).
         routine_data = [
             {
                 "id": "morning_flow",
                 "name": "Flujo Matutino",
-                "description": "Rutina suave para despertar el cuerpo y activar el core al comenzar el día.",
-                "duration_minutes": "20",
+                "description": "En esta clase completa de pilates en casa vamos a realizar una rutina de ejercicios de estiramiento, flexibilidad y movilidad. Es una clase de pilates ideal para principiantes o cualquier persona que quiera mejorar la postura y aumentar la energía y la flexibilidad con ejercicios sencillos, efectivos y explicados paso a paso.",
+                "duration_minutes": "18",
                 "difficulty": "beginner",
-                "enlace": TEST_ENLACE,
+                "enlace": "https://www.youtube.com/watch?v=B7DIkBlF2AY",
             },
             {
                 "id": "core_power",
                 "name": "Potencia de Core",
-                "description": "Entrenamiento intensivo centrado en el trabajo abdominal profundo y la estabilidad.",
-                "duration_minutes": "30",
+                "description": " Hoy trabajaremos el core, incluyendo abdomen, oblicuos y zona lumbar, fortaleciendo el centro del cuerpo para mejorar postura, equilibrio y estabilidad general.",
+                "duration_minutes": "16",
                 "difficulty": "intermediate",
-                "enlace": TEST_ENLACE,
+                "enlace": "https://www.youtube.com/watch?v=tNJ3U067S2c",
             },
             {
                 "id": "flexibility_flow",
                 "name": "Flexibilidad y Movilidad",
-                "description": "Sesión dedicada a mejorar la movilidad articular y elongar la musculatura.",
+                "description": "En esta clase de pilates realizaremos un trabajo global para movilizar y activar todo el cuerpo. Es una rutina muy completa perfecta para despertar el cuerpo por la mañana, aumentar la flexibilidad y fortalecer suavemente la musculatura. También te ayudará movilizar las articulaciones, mejorar la postura y aliviar dolores de espalda.",
                 "duration_minutes": "25",
                 "difficulty": "beginner",
-                "enlace": TEST_ENLACE,
+                "enlace": "https://www.youtube.com/watch?v=NXibfyQ9gvo",
             },
             {
                 "id": "full_body",
                 "name": "Cuerpo Completo",
-                "description": "Rutina equilibrada que trabaja todos los grupos musculares principales de pilates.",
-                "duration_minutes": "45",
+                "description": "Esta sesión de 30 minutos de Pilates Mat está diseñada para trabajar todo el cuerpo, ayudándote a definir y fortalecer cada músculo. A través de movimientos controlados y ejercicios efectivos, activarás el core, tonificarás piernas y brazos, y mejorarás tu postura. Es una clase ideal para quienes buscan un entrenamiento equilibrado que combine fuerza, resistencia y control corporal. ¡Espero que la disfrutes!",
+                "duration_minutes": "35",
                 "difficulty": "intermediate",
-                "enlace": TEST_ENLACE,
+                "enlace": "https://www.youtube.com/watch?v=xCM3ajL6BdE",
             },
         ]
-
         for r in routine_data:
-            db.add(Routine(**r))
+            db.merge(Routine(**r))
 
-        from datetime import datetime, timedelta
-
-        if db.query(LiveClass).count() == 0:
-            now = datetime.utcnow()
-            base = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            live_class_data = [
-                {
-                    "id": "core_avanzado_hoy",
-                    "title": "Core avanzado",
-                    "instructor_name": "María García",
-                    "scheduled_at": base + timedelta(hours=18),
-                    "duration_minutes": 45,
-                    "difficulty": "advanced",
-                    "enlace": "https://meet.google.com/core-avanzado-hoy",
-                },
-                {
-                    "id": "core_avanzado_paloma",
-                    "title": "Core avanzado",
-                    "instructor_name": "Paloma Domínguez",
-                    "scheduled_at": base + timedelta(days=1, hours=18),
-                    "duration_minutes": 45,
-                    "difficulty": "advanced",
-                    "enlace": "https://meet.google.com/core-avanzado-paloma",
-                },
-                {
-                    "id": "pilates_suave_manana",
-                    "title": "Pilates suave",
-                    "instructor_name": "Laura Sánchez",
-                    "scheduled_at": base + timedelta(days=1, hours=10),
-                    "duration_minutes": 30,
-                    "difficulty": "beginner",
-                    "enlace": "https://meet.google.com/pilates-suave-manana",
-                },
-                {
-                    "id": "stretching_manana",
-                    "title": "Stretching profundo",
-                    "instructor_name": "Ana Martínez",
-                    "scheduled_at": base + timedelta(days=1, hours=17),
-                    "duration_minutes": 40,
-                    "difficulty": "beginner",
-                    "enlace": "https://meet.google.com/stretching-manana",
-                },
-                {
-                    "id": "core_intermedio_2d",
-                    "title": "Core intermedio",
-                    "instructor_name": "María García",
-                    "scheduled_at": base + timedelta(days=2, hours=9),
-                    "duration_minutes": 45,
-                    "difficulty": "intermediate",
-                    "enlace": "https://meet.google.com/core-intermedio-2d",
-                },
-                {
-                    "id": "pilates_avanzado_2d",
-                    "title": "Pilates avanzado",
-                    "instructor_name": "Laura Sánchez",
-                    "scheduled_at": base + timedelta(days=2, hours=19),
-                    "duration_minutes": 60,
-                    "difficulty": "advanced",
-                    "enlace": "https://meet.google.com/pilates-avanzado-2d",
-                },
-                {
-                    "id": "flujo_matutino_3d",
-                    "title": "Flujo matutino",
-                    "instructor_name": "Ana Martínez",
-                    "scheduled_at": base + timedelta(days=3, hours=8),
-                    "duration_minutes": 30,
-                    "difficulty": "beginner",
-                    "enlace": "https://meet.google.com/flujo-matutino-3d",
-                },
-            ]
-            for lc in live_class_data:
-                db.add(LiveClass(**lc))
+        # ── Live classes (replace on every startup so times stay fresh) ───────
+        # To ADD a class: add a new dict with a unique id.
+        # To EDIT or DELETE: modify/remove the dict and restart.
+        # scheduled_at uses timedelta from today's midnight (UTC).
+        db.query(LiveClass).delete()
+        now = datetime.utcnow()
+        base = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        live_class_data = [
+            {
+                "id": "core_avanzado_hoy",
+                "title": "Core avanzado",
+                "instructor_name": "María García",
+                "scheduled_at": base + timedelta(hours=18),
+                "duration_minutes": 45,
+                "difficulty": "advanced",
+                "enlace": "https://meet.google.com/core-avanzado-hoy",
+            },
+            {
+                "id": "core_avanzado_paloma",
+                "title": "Core avanzado",
+                "instructor_name": "Paloma Domínguez",
+                "scheduled_at": base + timedelta(days=1, hours=18),
+                "duration_minutes": 45,
+                "difficulty": "advanced",
+                "enlace": "https://meet.google.com/core-avanzado-paloma",
+            },
+            {
+                "id": "pilates_suave_manana",
+                "title": "Pilates suave",
+                "instructor_name": "Laura Sánchez",
+                "scheduled_at": base + timedelta(days=1, hours=10),
+                "duration_minutes": 30,
+                "difficulty": "beginner",
+                "enlace": "https://meet.google.com/pilates-suave-manana",
+            },
+            {
+                "id": "stretching_manana",
+                "title": "Stretching profundo",
+                "instructor_name": "Ana Martínez",
+                "scheduled_at": base + timedelta(days=1, hours=17),
+                "duration_minutes": 40,
+                "difficulty": "beginner",
+                "enlace": "https://meet.google.com/stretching-manana",
+            },
+            {
+                "id": "core_intermedio_2d",
+                "title": "Core intermedio",
+                "instructor_name": "María García",
+                "scheduled_at": base + timedelta(days=2, hours=9),
+                "duration_minutes": 45,
+                "difficulty": "intermediate",
+                "enlace": "https://meet.google.com/core-intermedio-2d",
+            },
+            {
+                "id": "pilates_avanzado_2d",
+                "title": "Pilates avanzado",
+                "instructor_name": "Laura Sánchez",
+                "scheduled_at": base + timedelta(days=2, hours=19),
+                "duration_minutes": 60,
+                "difficulty": "advanced",
+                "enlace": "https://meet.google.com/pilates-avanzado-2d",
+            },
+            {
+                "id": "flujo_matutino_3d",
+                "title": "Flujo matutino",
+                "instructor_name": "Ana Martínez",
+                "scheduled_at": base + timedelta(days=3, hours=8),
+                "duration_minutes": 30,
+                "difficulty": "beginner",
+                "enlace": "https://meet.google.com/flujo-matutino-3d",
+            },
+        ]
+        for lc in live_class_data:
+            db.add(LiveClass(**lc))
 
         db.commit()
     finally:
