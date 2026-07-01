@@ -7,12 +7,20 @@ from app.database import Base, engine, SessionLocal
 from app.routers import auth, home, postures, sessions
 
 
+TEST_ENLACE = "https://www.youtube.com/watch?v=0_sO9T3-9bY"
+
+
 def _seed_db():
     """Insert initial posture, routine and live-class data if tables are empty."""
     from app.models.posture import LiveClass, Posture, Routine
 
     db = SessionLocal()
     try:
+        # Always sync enlace so thumbnails work in testing
+        if db.query(Routine).count() > 0:
+            db.query(Routine).update({"enlace": TEST_ENLACE})
+            db.commit()
+
         if db.query(Posture).count() > 0:
             return
 
@@ -93,7 +101,7 @@ def _seed_db():
                 "description": "Rutina suave para despertar el cuerpo y activar el core al comenzar el día.",
                 "duration_minutes": "20",
                 "difficulty": "beginner",
-                "enlace": "https://www.youtube.com/watch?v=morning_flow",
+                "enlace": TEST_ENLACE,
             },
             {
                 "id": "core_power",
@@ -101,7 +109,7 @@ def _seed_db():
                 "description": "Entrenamiento intensivo centrado en el trabajo abdominal profundo y la estabilidad.",
                 "duration_minutes": "30",
                 "difficulty": "intermediate",
-                "enlace": "https://www.youtube.com/watch?v=core_power",
+                "enlace": TEST_ENLACE,
             },
             {
                 "id": "flexibility_flow",
@@ -109,7 +117,7 @@ def _seed_db():
                 "description": "Sesión dedicada a mejorar la movilidad articular y elongar la musculatura.",
                 "duration_minutes": "25",
                 "difficulty": "beginner",
-                "enlace": "https://www.youtube.com/watch?v=flexibility_flow",
+                "enlace": TEST_ENLACE,
             },
             {
                 "id": "full_body",
@@ -117,7 +125,7 @@ def _seed_db():
                 "description": "Rutina equilibrada que trabaja todos los grupos musculares principales de pilates.",
                 "duration_minutes": "45",
                 "difficulty": "intermediate",
-                "enlace": "https://www.youtube.com/watch?v=full_body",
+                "enlace": TEST_ENLACE,
             },
         ]
 

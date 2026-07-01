@@ -1,83 +1,396 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { usePostureHistory } from '../../hooks/usePostureHistory';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  View, Text, StyleSheet, TextInput, TouchableOpacity,
+  ScrollView, Alert, ActivityIndicator,
+} from 'react-native';
+import Svg, { Circle, Text as SvgText } from 'react-native-svg';
 import { useAuthStore } from '../../store/authStore';
-import { PostureSession } from '../../types';
+import { authService } from '../../services/authService';
+import { getActivity, getProgress } from '../../services/homeService';
+import { RachaIcon } from '../../components/icons/TabIcons';
 import { colors, spacing, radius, typography } from '../../theme';
 
-function SessionItem({ session }: { session: PostureSession }) {
-  const date = new Date(session.startedAt).toLocaleDateString('es-ES', {
-    day: '2-digit', month: 'short', year: 'numeric',
-  });
-  const scoreColor =
-    session.averageScore >= 80 ? colors.scoreHigh : session.averageScore >= 50 ? colors.scoreMedium : colors.scoreLow;
+// ─── Donut Chart (small) ─────────────────────────────────────────────────────
+
+function DonutChart({ percentage, size = 90 }: { percentage: number; size?: number }) {
+  const strokeWidth = 12;
+  const r = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference * (1 - Math.min(percentage, 100) / 100);
 
   return (
-    <View style={styles.card}>
-      <View style={styles.cardLeft}>
-        <Text style={[typography.h3, styles.postureName]}>
-          {session.postureId.replace(/_/g, ' ')}
-        </Text>
-        <Text style={[typography.caption, styles.date]}>{date}</Text>
-      </View>
-      <Text style={[styles.score, { color: scoreColor }]}>{session.averageScore}</Text>
-    </View>
+    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <Circle
+        cx={size / 2} cy={size / 2} r={r}
+        stroke={colors.backgroundLight} strokeWidth={strokeWidth} fill="none"
+      />
+      <Circle
+        cx={size / 2} cy={size / 2} r={r}
+        stroke={colors.black} strokeWidth={strokeWidth} fill="none"
+        strokeDasharray={circumference} strokeDashoffset={offset}
+        strokeLinecap="round"
+        transform={`rotate(-90, ${size / 2}, ${size / 2})`}
+      />
+      <SvgText
+        x={size / 2} y={size / 2 + 6}
+        textAnchor="middle" fontSize={16} fontWeight="700" fill={colors.black}
+      >
+        {Math.round(percentage)}%
+      </SvgText>
+    </Svg>
   );
 }
+
+// ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function ProgressScreen() {
-  const { sessionHistory, isLoading, error } = usePostureHistory();
+  const user = useAuthStore((s) => s.user);
+  const updateUser = useAuthStore((s) => s.updateUser);
   const logout = useAuthStore((s) => s.logout);
 
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(user?.name ?? '');
+  const [email, setEmail] = useState(user?.email ?? '');
+  const [saving, setSaving] = useState(false);
+
+  const [streakDays, setStreakDays] = useState(0);
+  const [percentage, setPercentage] = useState(0);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  const loadStats = useCallback(async () => {
+    try {
+      const [act, prog] = await Promise.all([getActivity(), getProgress()]);
+      setStreakDays(act.streakDays);
+      setPercentage(prog.percentage);
+    } catch { /* ignore */ } finally {
+      setLoadingStats(false);
+    }
+  }, []);
+
+  useEffect(() => { loadStats(); }, [loadStats]);
+
+  const handleSave = async () => {
+    if (!name.trim() || !email.trim()) return;
+    setSaving(true);
+    try {
+      const updated = await authService.updateProfile(name.trim(), email.trim());
+      await updateUser(updated);
+    } catch {
+      // API not available — update locally
+      if (user) await updateUser({ ...user, name: name.trim(), email: email.trim() });
+    } finally {
+      setSaving(false);
+      setEditing(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setName(user?.name ?? '');
+    setEmail(user?.email ?? '');
+    setEditing(false);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Eliminar cuenta',
+      '¿Estás segura de que quieres eliminar tu cuenta? Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try { await authService.deleteAccount(); } catch { /* continue */ }
+            logout();
+          },
+        },
+      ],
+    );
+  };
+
+  const initials = (user?.name ?? '?')
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('');
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={[typography.h2, styles.title]}>Mi Progreso</Text>
-        <TouchableOpacity onPress={logout} style={styles.logoutButton} activeOpacity={0.7}>
-          <Text style={styles.logoutText}>Cerrar sesión</Text>
-        </TouchableOpacity>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.container}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Avatar & name header */}
+      <View style={styles.avatarSection}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{initials}</Text>
+        </View>
+        {!editing && (
+          <TouchableOpacity onPress={() => setEditing(true)} style={styles.editButton}>
+            <Text style={styles.editButtonText}>Editar perfil</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      {isLoading && <ActivityIndicator size="large" color={colors.black} style={styles.loader} />}
+      {/* Editable fields */}
+      <View style={styles.card}>
+        <Text style={styles.fieldLabel}>Nombre</Text>
+        {editing ? (
+          <TextInput
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
+            returnKeyType="next"
+          />
+        ) : (
+          <Text style={styles.fieldValue}>{user?.name ?? '—'}</Text>
+        )}
 
-      {error && <Text style={[typography.body, styles.error]}>{error}</Text>}
+        <View style={styles.separator} />
 
-      {!isLoading && (
-        <FlatList
-          data={sessionHistory}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ gap: spacing.md }}
-          renderItem={({ item }) => <SessionItem session={item} />}
-          ListEmptyComponent={
-            <Text style={[typography.body, styles.empty]}>
-              Aún no tienes sesiones registradas.
-            </Text>
-          }
-        />
-      )}
-    </View>
+        <Text style={styles.fieldLabel}>Correo electrónico</Text>
+        {editing ? (
+          <TextInput
+            style={styles.input}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            returnKeyType="done"
+          />
+        ) : (
+          <Text style={styles.fieldValue}>{user?.email ?? '—'}</Text>
+        )}
+
+        {editing && (
+          <View style={styles.editActions}>
+            <TouchableOpacity onPress={handleCancelEdit} style={styles.cancelBtn}>
+              <Text style={styles.cancelBtnText}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleSave}
+              style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+              disabled={saving}
+            >
+              {saving
+                ? <ActivityIndicator size="small" color={colors.primary} />
+                : <Text style={styles.saveBtnText}>Guardar</Text>
+              }
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      {/* Stats */}
+      <Text style={styles.sectionTitle}>Tu progreso</Text>
+      <View style={styles.statsCard}>
+        {loadingStats ? (
+          <ActivityIndicator color={colors.black} />
+        ) : (
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <View style={styles.streakRow}>
+                <Text style={styles.statNumber}>{streakDays}</Text>
+                <RachaIcon size={18} />
+              </View>
+              <Text style={styles.statLabel}>
+                día{streakDays !== 1 ? 's' : ''} seguido{streakDays !== 1 ? 's' : ''}
+              </Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <DonutChart percentage={percentage} />
+              <Text style={styles.statLabel}>niveles completados</Text>
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* Account actions */}
+      <View style={styles.actionsSection}>
+        <TouchableOpacity onPress={logout} style={styles.logoutBtn} activeOpacity={0.7}>
+          <Text style={styles.logoutText}>Cerrar sesión</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleDeleteAccount}
+          style={styles.deleteBtn}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.deleteText}>Eliminar cuenta</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: spacing.xl, paddingTop: spacing.xxl + spacing.lg },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg },
-  title: { marginBottom: 0 },
-  logoutButton: { paddingVertical: spacing.xs, paddingHorizontal: spacing.sm },
-  logoutText: { fontSize: 14, fontWeight: '600', color: colors.primary },
-  loader: { marginTop: spacing.xl },
-  error: { color: colors.scoreLow, textAlign: 'center', marginTop: spacing.lg },
-  empty: { textAlign: 'center', opacity: 0.6, marginTop: spacing.xl },
+  scroll: { flex: 1, backgroundColor: colors.background },
+  container: {
+    padding: spacing.xl,
+    paddingTop: spacing.xxl + spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+
+  // Avatar
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.backgroundLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  avatarText: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: colors.primary,
+  },
+  editButton: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+  },
+  editButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+
+  // Info card
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.backgroundLight,
     borderRadius: radius.lg,
     padding: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  fieldValue: {
+    fontSize: 17,
+    fontWeight: '500',
+    color: colors.black,
+    marginBottom: spacing.sm,
+  },
+  input: {
+    fontSize: 17,
+    fontWeight: '500',
+    color: colors.black,
+    borderBottomWidth: 1.5,
+    borderBottomColor: colors.primary,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.sm,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: colors.primary,
+    opacity: 0.15,
+    marginVertical: spacing.sm,
+  },
+  editActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  cancelBtn: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  cancelBtnText: { fontSize: 14, fontWeight: '600', color: colors.primary },
+  saveBtn: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  saveBtnDisabled: { opacity: 0.6 },
+  saveBtnText: { fontSize: 14, fontWeight: '700', color: colors.background },
+
+  // Stats
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.black,
+    marginBottom: spacing.sm,
+  },
+  statsCard: {
+    backgroundColor: colors.backgroundLight,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.xl,
+    alignItems: 'center',
+  },
+  statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: spacing.lg,
   },
-  cardLeft: { flex: 1 },
-  postureName: { textTransform: 'capitalize', marginBottom: spacing.xs },
-  date: {},
-  score: { fontSize: 28, fontWeight: '800' },
+  statItem: { alignItems: 'center', flex: 1 },
+  streakRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  statNumber: { fontSize: 36, fontWeight: '800', color: colors.black },
+  statLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  statDivider: {
+    width: 1,
+    height: 70,
+    backgroundColor: colors.primary,
+    opacity: 0.2,
+  },
+
+  // Account actions
+  actionsSection: {
+    gap: spacing.sm,
+    marginTop: spacing.xl,
+  },
+  logoutBtn: {
+    backgroundColor: colors.backgroundLight,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  logoutText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  deleteBtn: {
+    backgroundColor: colors.backgroundLight,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#C0392B',
+  },
+  deleteText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#C0392B',
+  },
 });

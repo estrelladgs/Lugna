@@ -25,6 +25,14 @@ import {
   getLiveClasses,
   getProgress,
 } from '../../services/homeService';
+import { routineService } from '../../services/routineService';
+
+function getYoutubeThumbnail(url?: string): string | null {
+  if (!url) return null;
+  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (!match) return null;
+  return `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
+}
 
 type Nav = BottomTabNavigationProp<AppTabParamList>;
 
@@ -50,7 +58,7 @@ function DonutChart({ percentage, size = 110 }: { percentage: number; size?: num
         cx={size / 2}
         cy={size / 2}
         r={r}
-        stroke={colors.black}
+        stroke={colors.scoreHigh}
         strokeWidth={strokeWidth}
         fill="none"
         strokeDasharray={circumference}
@@ -187,7 +195,19 @@ function ContinueCard({
       <Text style={styles.continueSectionTitle}>Continuar entrenamiento</Text>
       <View style={styles.continueRow}>
         <View style={styles.yogaIconWrapper}>
-          <Image source={require('../../../assets/onboarding1.png')} style={styles.yogaImage} resizeMode="cover" />
+          {getYoutubeThumbnail(routine.enlace) ? (
+            <Image
+              source={{ uri: getYoutubeThumbnail(routine.enlace)! }}
+              style={styles.yogaImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <Image
+              source={require('../../../assets/onboarding1.png')}
+              style={styles.yogaImage}
+              resizeMode="cover"
+            />
+          )}
         </View>
         <View style={styles.continueInfo}>
           <Text style={styles.continueTitle} numberOfLines={2}>
@@ -216,6 +236,13 @@ export default function HomeScreen() {
   const [continueRoutine, setContinueRoutine] = useState<ContinueRoutine | null>(null);
 
   const load = useCallback(async () => {
+    // Load last routine from local storage first (instant)
+    try {
+      const last = await routineService.getLastRoutine();
+      if (last) setContinueRoutine(last);
+    } catch { /* ignore */ }
+
+    // Then fetch from backend (may update the above)
     try {
       const [classes, act, prog, cont] = await Promise.all([
         getLiveClasses(),
@@ -226,9 +253,9 @@ export default function HomeScreen() {
       setLiveClasses(classes);
       setActivity(act);
       setProgress(prog);
-      setContinueRoutine(cont);
+      if (cont?.id) setContinueRoutine(cont);
     } catch {
-      // backend not available — keep empty defaults
+      // backend not available — keep local defaults
     }
   }, []);
 
@@ -520,12 +547,12 @@ const styles = StyleSheet.create({
     marginVertical: 1,
   },
   calendarCellActive: {
-    backgroundColor: colors.black,
+    backgroundColor: colors.scoreHigh,
     borderRadius: 11,
   },
   calendarCellToday: {
     borderWidth: 1,
-    borderColor: colors.black,
+    borderColor: colors.scoreHigh,
     borderRadius: 11,
   },
   calendarDayName: {

@@ -8,13 +8,14 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   setUser: (user: User, tokens: AuthTokens) => Promise<void>;
+  updateUser: (user: User) => Promise<void>;
   logout: () => Promise<void>;
   loadFromStorage: () => Promise<void>;
 }
 
 const STORAGE_KEY = '@lugna_auth';
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   tokens: null,
   isAuthenticated: false,
@@ -23,6 +24,14 @@ export const useAuthStore = create<AuthState>((set) => ({
   setUser: async (user, tokens) => {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ user, tokens }));
     set({ user, tokens, isAuthenticated: true });
+  },
+
+  updateUser: async (updatedUser) => {
+    const { tokens } = get();
+    if (tokens) {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ user: updatedUser, tokens }));
+    }
+    set({ user: updatedUser });
   },
 
   logout: async () => {
