@@ -3,7 +3,8 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BottomTabBarProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeScreen from '../screens/home/HomeScreen';
-import RoutineListScreen from '../screens/routines/RoutineListScreen';
+import RoutinesNavigator from './RoutinesNavigator';
+import ClassesScreen from '../screens/classes/ClassesScreen';
 import ProgressScreen from '../screens/progress/ProgressScreen';
 import PostureNavigator from './PostureNavigator';
 import { colors } from '../theme';
@@ -18,7 +19,8 @@ import {
 export type AppTabParamList = {
   Home: undefined;
   Routines: undefined;
-  Posture: undefined;
+  Classes: undefined;
+  Camera: undefined;
   Progress: undefined;
 };
 
@@ -34,17 +36,19 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     <View style={{ overflow: 'visible' }}>
       {/* Floating camera button */}
       <TouchableOpacity
-        onPress={() => navigation.navigate('Posture')}
+        onPress={() => navigation.navigate('Camera')}
         style={[styles.floatingCamera, { bottom: barHeight + 12 }]}
         activeOpacity={0.85}
       >
         <CamaraIcon size={30} />
       </TouchableOpacity>
 
-      {/* Tab bar */}
+      {/* Tab bar — skip hidden tabs */}
       <View style={[styles.tabBar, { height: barHeight, paddingBottom: insets.bottom }]}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
+          if ((options as { tabBarHidden?: boolean }).tabBarHidden) return null;
+
           const isFocused = state.index === index;
           const color = colors.textMuted;
 
@@ -92,15 +96,15 @@ export default function AppNavigator() {
       />
       <Tab.Screen
         name="Routines"
-        component={RoutineListScreen}
+        component={RoutinesNavigator}
         options={{
           title: 'Programas',
           tabBarIcon: ({ color }) => <ProgramasIcon color={color} size={24} />,
         }}
       />
       <Tab.Screen
-        name="Posture"
-        component={PostureNavigator}
+        name="Classes"
+        component={ClassesScreen}
         options={{
           title: 'Clases',
           tabBarIcon: ({ color }) => <ClasesIcon color={color} size={24} />,
@@ -113,6 +117,12 @@ export default function AppNavigator() {
           title: 'Perfil',
           tabBarIcon: ({ color }) => <PerfilIcon color={color} size={24} />,
         }}
+      />
+      {/* Hidden tab — accessed only via the floating camera button */}
+      <Tab.Screen
+        name="Camera"
+        component={PostureNavigator}
+        options={{ tabBarHidden: true } as object}
       />
     </Tab.Navigator>
   );

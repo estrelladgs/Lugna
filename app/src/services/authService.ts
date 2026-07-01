@@ -32,4 +32,13 @@ export const authService = {
     const { data } = await api.post<AuthTokens>('/auth/refresh', { refreshToken });
     return data;
   },
+
+  updateProfile: async (name: string, email: string): Promise<User> => {
+    const { data } = await api.patch<User>('/users/me', { name, email });
+    return data;
+  },
+
+  deleteAccount: async (): Promise<void> => {
+    await api.delete('/users/me');
+  },
 };
