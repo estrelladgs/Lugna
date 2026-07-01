@@ -46,7 +46,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
           const isFocused = state.index === index;
-          const color = isFocused ? colors.black : colors.textMuted;
+          const color = colors.textMuted;
 
           const onPress = () => {
             const event = navigation.emit({
@@ -63,7 +63,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             <TouchableOpacity
               key={route.key}
               onPress={onPress}
-              style={styles.tabItem}
+              style={[styles.tabItem, isFocused && styles.tabItemActive]}
               activeOpacity={0.7}
             >
               {options.tabBarIcon?.({ focused: isFocused, color, size: 24 })}
@@ -132,23 +132,26 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     gap: 4,
   },
+  tabItemActive: {
+    backgroundColor: colors.backgroundLight,
+  },
   tabLabel: {
-    fontSize: 10,
+    fontSize: 15,
     fontWeight: '600',
   },
   floatingCamera: {
     position: 'absolute',
     right: 20,
-    width: 58,
-    height: 58,
+    width: 60,
+    height: 60,
     borderRadius: 29,
     backgroundColor: colors.backgroundLight,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#2F4F75',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 1,
     elevation: 6,
     zIndex: 100,
   },

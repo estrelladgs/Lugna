@@ -32,7 +32,7 @@ export default function RoutineListScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={[typography.h2, styles.title]}>Mis Rutinas</Text>
+      <Text style={[typography.h2, styles.title]}>Mis Programas</Text>
       <FlatList
         data={routines}
         keyExtractor={(item) => item.id}
