@@ -25,13 +25,6 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleDemoLogin = async () => {
-    await setUser(
-      { id: 'demo', name: 'Demo Usuario', email: 'demo@lugna.app', createdAt: new Date().toISOString() },
-      { accessToken: 'demo-token', refreshToken: 'demo-refresh' }
-    );
-  };
-
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Error', 'Completa todos los campos.');
@@ -54,10 +47,10 @@ export default function LoginScreen() {
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={[typography.h2, styles.title]}>Iniciar Sesión</Text>
+      <Text style={[typography.h1, styles.title]}>Iniciar Sesión</Text>
 
       <View style={styles.form}>
-        <Text style={typography.label}>Email</Text>
+        <Text style={[typography.label, styles.labelIndent]}>Email</Text>
         <TextInput
           style={styles.input}
           placeholder="Inserta tu email"
@@ -68,7 +61,7 @@ export default function LoginScreen() {
           autoCapitalize="none"
         />
 
-        <Text style={[typography.label, styles.fieldLabel]}>Contraseña</Text>
+        <Text style={[typography.label, styles.fieldLabel, styles.labelIndent]}>Contraseña</Text>
         <TextInput
           style={styles.input}
           placeholder="Inserta tu contraseña"
@@ -90,9 +83,6 @@ export default function LoginScreen() {
         <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
           <Text style={styles.socialIcon}>G</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
-          <Text style={styles.socialIcon}></Text>
-        </TouchableOpacity>
       </View>
 
       <TouchableOpacity
@@ -102,38 +92,43 @@ export default function LoginScreen() {
         disabled={loading}
       >
         {loading ? (
-          <ActivityIndicator color={colors.black} />
+          <ActivityIndicator color={colors.primary} />
         ) : (
           <Text style={typography.button}>Entrar</Text>
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.demoButton} onPress={handleDemoLogin} activeOpacity={0.7}>
-        <Text style={styles.demoText}>Entrar en modo demo (sin backend)</Text>
-      </TouchableOpacity>
+      <View style={styles.dotsRow}>
+        {[0, 1, 2, 3].map((i) => (
+          <View key={i} style={[styles.dot, i === 3 ? styles.dotActive : styles.dotInactive]} />
+        ))}
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: colors.background },
+  scroll: { flex: 1, backgroundColor: colors.backgroundLight },
   container: {
     flexGrow: 1,
+    justifyContent: 'center',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxl + spacing.lg,
-    paddingBottom: spacing.xxl,
+    paddingVertical: spacing.xxl,
   },
-  title: { marginBottom: spacing.lg },
+  title: { marginBottom: spacing.lg, textAlign: 'center', fontSize: 40, fontWeight: '700' },
   form: { gap: spacing.xs },
   fieldLabel: { marginTop: spacing.md },
+  labelIndent: { paddingLeft: spacing.md },
   input: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.primary,
     borderRadius: radius.lg,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 4,
+    paddingVertical: spacing.sm,
     fontSize: 15,
     color: colors.black,
-    marginTop: spacing.xs,
+    marginTop: 2,
   },
   registerText: {
     marginTop: spacing.lg,
@@ -155,26 +150,29 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   socialIcon: { fontSize: 22, fontWeight: '700' },
   button: {
     marginTop: spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.primary,
     paddingVertical: spacing.md + 2,
     borderRadius: radius.pill,
     alignItems: 'center',
   },
-  demoButton: {
-    marginTop: spacing.md,
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
+  dotsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: spacing.xl,
   },
-  demoText: {
-    fontSize: 13,
-    color: colors.textMuted,
-    textDecorationLine: 'underline',
-  },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  dotActive: { backgroundColor: colors.dotActive, width: 20 },
+  dotInactive: { backgroundColor: colors.background, borderWidth: 0.5, borderColor: colors.primary },
 });
