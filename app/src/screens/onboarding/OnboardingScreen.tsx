@@ -3,33 +3,33 @@ import {
   View,
   Text,
   StyleSheet,
-  Dimensions,
   TouchableOpacity,
   Image,
+  useWindowDimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius, typography } from '../../theme';
 
-const { width } = Dimensions.get('window');
-const TOTAL_PAGES = 4; // 3 content slides + 1 login/register
+const TOTAL_PAGES = 4;
 
 type RootParamList = { Onboarding: undefined; Register: undefined; Login: undefined };
 
 // ─── Slide 1: Logo → Imagen → Título ────────────────────────────────────────
 
-function SlideOne() {
+function SlideOne({ width }: { width: number }) {
   return (
     <View style={styles.slide}>
       <Image
         source={require('../../../assets/Logo.png')}
-        style={styles.logo}
+        style={{ width: width * 0.38, height: 72 }}
         resizeMode="contain"
       />
       <View style={styles.imageContainer}>
         <Image
           source={require('../../../assets/onboarding1.png')}
-          style={styles.illustration}
+          style={{ width: width * 0.6, height: width * 0.6 }}
           resizeMode="contain"
         />
       </View>
@@ -42,7 +42,7 @@ function SlideOne() {
 
 // ─── Slide 2: Título → Texto → Imagen ───────────────────────────────────────
 
-function SlideTwo() {
+function SlideTwo({ width }: { width: number }) {
   return (
     <View style={styles.slide}>
       <Text style={[typography.h1, styles.titleTop]}>¿Qué es Pilates?</Text>
@@ -54,7 +54,7 @@ function SlideTwo() {
       <View style={styles.imageContainer}>
         <Image
           source={require('../../../assets/onboarding2.png')}
-          style={styles.illustration}
+          style={{ width: width * 0.6, height: width * 0.6 }}
           resizeMode="contain"
         />
       </View>
@@ -64,7 +64,7 @@ function SlideTwo() {
 
 // ─── Slide 3: Título → Imagen → Texto ───────────────────────────────────────
 
-function SlideThree() {
+function SlideThree({ width }: { width: number }) {
   return (
     <View style={styles.slide}>
       <Text style={[typography.h1, styles.titleTop]}>
@@ -73,7 +73,7 @@ function SlideThree() {
       <View style={styles.imageContainer}>
         <Image
           source={require('../../../assets/onboarding3.png')}
-          style={styles.illustration}
+          style={{ width: width * 0.6, height: width * 0.6 }}
           resizeMode="contain"
         />
       </View>
@@ -90,6 +90,7 @@ function SlideThree() {
 
 export default function OnboardingScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootParamList>>();
+  const { width } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const handleNext = () => {
@@ -101,10 +102,10 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      {currentIndex === 0 && <SlideOne />}
-      {currentIndex === 1 && <SlideTwo />}
-      {currentIndex === 2 && <SlideThree />}
+    <SafeAreaView style={styles.container}>
+      {currentIndex === 0 && <SlideOne width={width} />}
+      {currentIndex === 1 && <SlideTwo width={width} />}
+      {currentIndex === 2 && <SlideThree width={width} />}
 
       <View style={styles.footer}>
         <TouchableOpacity style={styles.button} onPress={handleNext} activeOpacity={0.85}>
@@ -120,7 +121,7 @@ export default function OnboardingScreen() {
           ))}
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -131,35 +132,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-
-  // Slide base
   slide: {
     flex: 1,
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxl,
+    paddingTop: spacing.xl,
   },
-
-  // Logo (slide 1)
-  logo: {
-    width: width * 0.38,
-    height: 72,
-    marginBottom: spacing.sm,
-  },
-
-  // Image container — toma el espacio restante verticalmente
   imageContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
   },
-  illustration: {
-    width: width * 0.6,
-    height: width * 0.6,
-  },
-
-  // Títulos
   titleTop: {
     textAlign: 'center',
     marginBottom: spacing.md,
@@ -169,24 +153,18 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     marginBottom: spacing.md,
   },
-
-  // Cuerpo de texto
   body: {
     textAlign: 'center',
     color: colors.black,
     opacity: 0.75,
     marginBottom: spacing.sm,
   },
-
-  // Footer
   footer: {
-    paddingBottom: spacing.xxl,
+    paddingBottom: spacing.lg,
     paddingHorizontal: spacing.xl,
     alignItems: 'center',
-    gap: spacing.lg,
+    gap: spacing.md,
   },
-
-  // Botón
   button: {
     width: '100%',
     backgroundColor: colors.backgroundLight,
@@ -199,8 +177,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.primary,
   },
-
-  // Dots
   dotsRow: {
     flexDirection: 'row',
     gap: spacing.xs + 2,

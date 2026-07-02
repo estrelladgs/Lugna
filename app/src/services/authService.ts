@@ -28,6 +28,11 @@ export const authService = {
     return data;
   },
 
+  googleLogin: async (idToken: string): Promise<AuthResponse> => {
+    const { data } = await api.post<AuthResponse>('/auth/google', { idToken });
+    return data;
+  },
+
   refreshToken: async (refreshToken: string): Promise<AuthTokens> => {
     const { data } = await api.post<AuthTokens>('/auth/refresh', { refreshToken });
     return data;

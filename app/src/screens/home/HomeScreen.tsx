@@ -38,7 +38,7 @@ type Nav = BottomTabNavigationProp<AppTabParamList>;
 
 // ─── Donut Chart ─────────────────────────────────────────────────────────────
 
-function DonutChart({ percentage, size = 110 }: { percentage: number; size?: number }) {
+function DonutChart({ percentage, size = 120 }: { percentage: number; size?: number }) {
   const strokeWidth = 14;
   const r = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * r;
@@ -86,16 +86,39 @@ const DAY_NAMES = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
 function MiniCalendar({ activeDays }: { activeDays: string[] }) {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
+  const realYear = now.getFullYear();
+  const realMonth = now.getMonth();
   const today = now.getDate();
+
+  const [viewedYear, setViewedYear] = useState(realYear);
+  const [viewedMonth, setViewedMonth] = useState(realMonth);
+  const isCurrentMonth = viewedYear === realYear && viewedMonth === realMonth;
+
+  const goToPrevMonth = () => {
+    if (viewedMonth === 0) {
+      setViewedMonth(11);
+      setViewedYear((y) => y - 1);
+    } else {
+      setViewedMonth((m) => m - 1);
+    }
+  };
+
+  const goToNextMonth = () => {
+    if (isCurrentMonth) return;
+    if (viewedMonth === 11) {
+      setViewedMonth(0);
+      setViewedYear((y) => y + 1);
+    } else {
+      setViewedMonth((m) => m + 1);
+    }
+  };
 
   const activeSet = useMemo(() => new Set(activeDays), [activeDays]);
 
-  const firstDayOfMonth = new Date(year, month, 1);
+  const firstDayOfMonth = new Date(viewedYear, viewedMonth, 1);
   // getDay() returns 0=Sun...6=Sat; convert to Mon-based (0=Mon...6=Sun)
   const startOffset = (firstDayOfMonth.getDay() + 6) % 7;
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInMonth = new Date(viewedYear, viewedMonth + 1, 0).getDate();
 
   const monthName = firstDayOfMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' });
 
@@ -108,14 +131,29 @@ function MiniCalendar({ activeDays }: { activeDays: string[] }) {
   while (cells.length % 7 !== 0) cells.push(null);
 
   const isoDate = (day: number) => {
-    const m = String(month + 1).padStart(2, '0');
+    const m = String(viewedMonth + 1).padStart(2, '0');
     const d = String(day).padStart(2, '0');
-    return `${year}-${m}-${d}`;
+    return `${viewedYear}-${m}-${d}`;
   };
 
   return (
     <View>
-      <Text style={styles.calendarMonth}>{monthName}</Text>
+      <View style={styles.calendarHeader}>
+        <TouchableOpacity onPress={goToPrevMonth} hitSlop={8} style={styles.calendarArrow}>
+          <Text style={styles.calendarArrowText}>‹</Text>
+        </TouchableOpacity>
+        <Text style={styles.calendarMonth}>{monthName}</Text>
+        <TouchableOpacity
+          onPress={goToNextMonth}
+          disabled={isCurrentMonth}
+          hitSlop={8}
+          style={styles.calendarArrow}
+        >
+          <Text style={[styles.calendarArrowText, isCurrentMonth && styles.calendarArrowTextDisabled]}>
+            ›
+          </Text>
+        </TouchableOpacity>
+      </View>
       {/* Day headers */}
       <View style={styles.calendarRow}>
         {DAY_NAMES.map((d) => (
@@ -128,7 +166,7 @@ function MiniCalendar({ activeDays }: { activeDays: string[] }) {
           {cells.slice(row * 7, row * 7 + 7).map((day, col) => {
             if (!day) return <View key={col} style={styles.calendarCell} />;
             const isActive = activeSet.has(isoDate(day));
-            const isToday = day === today;
+            const isToday = isCurrentMonth && day === today;
             return (
               <View
                 key={col}
@@ -217,9 +255,9 @@ function ContinueCard({
         </View>
       </View>
       {/* Progress bar */}
-      <View style={styles.progressBarBg}>
+      {/* <View style={styles.progressBarBg}>
         <View style={[styles.progressBarFill, { width: `${Math.round(filled * 100)}%` }]} />
-      </View>
+      </View> */}
     </TouchableOpacity>
   );
 }
@@ -326,9 +364,12 @@ export default function HomeScreen() {
               <MiniCalendar activeDays={activity.activeDays} />
               <View style={styles.streakRow}>
                 <Text style={styles.streakText}>
-                  {activity.streakDays} día{activity.streakDays !== 1 ? 's' : ''} seguido{activity.streakDays !== 1 ? 's' : ''} de actividad
+                  {activity.streakDays} día{activity.streakDays !== 1 ? 's' : ''} seguido{activity.streakDays !== 1 ? 's' : ''} de{' '}
                 </Text>
-                <RachaIcon size={13} />
+                <View style={styles.streakLastWord}>
+                  <Text style={styles.streakText}>actividad</Text>
+                  <RachaIcon size={13} />
+                </View>
               </View>
             </View>
 
@@ -391,14 +432,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   continueCard: {
-    backgroundColor: colors.background,
+    backgroundColor: '#FFFFFF',
     borderRadius: radius.md,
     padding: spacing.lg,
-    shadowColor: '#99BDDF',
+    shadowColor: colors.backgroundLight,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.80,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 2,
   },
   continueRow: {
     flexDirection: 'row',
@@ -452,15 +493,20 @@ const styles = StyleSheet.create({
   },
 
   // Live classes carousel
-  carousel: { marginBottom: spacing.lg },
-  carouselContent: { paddingRight: spacing.lg, gap: spacing.sm },
+  carousel: { marginBottom: spacing.lg, overflow: 'visible' },
+  carouselContent: { paddingRight: spacing.lg, paddingVertical: spacing.sm, gap: spacing.sm },
   liveCard: {
-    backgroundColor: colors.backgroundLight,
+    backgroundColor: '#FFFFFF',
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,
     justifyContent: 'center',
+    shadowColor: colors.backgroundLight,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 2,
   },
   liveCardTitle: {
     fontSize: 16,
@@ -484,12 +530,15 @@ const styles = StyleSheet.create({
 
   // Progress section
   progressCard: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.backgroundLight,
+    backgroundColor: '#FFFFFF',
     borderRadius: radius.md,
-    padding: spacing.sm,
+    padding: spacing.md,
     marginBottom: spacing.lg,
+    shadowColor: colors.backgroundLight,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 2,
   },
   progressRow: {
     flexDirection: 'row',
@@ -507,19 +556,24 @@ const styles = StyleSheet.create({
   },
   streakRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
     marginTop: 6,
   },
+  streakLastWord: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
   streakText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.black,
     textAlign: 'center',
   },
   levelsText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.black,
     textAlign: 'center',
@@ -527,12 +581,30 @@ const styles = StyleSheet.create({
   },
 
   // Calendar
+  calendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  calendarArrow: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  calendarArrowText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.black,
+  },
+  calendarArrowTextDisabled: {
+    color: colors.textMuted,
+    opacity: 0.35,
+  },
   calendarMonth: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: colors.black,
     textTransform: 'capitalize',
-    marginBottom: 4,
     textAlign: 'center',
   },
   calendarRow: {
@@ -540,30 +612,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   calendarCell: {
-    width: 22,
-    height: 22,
+    width: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 1,
   },
   calendarCellActive: {
     backgroundColor: colors.scoreHigh,
-    borderRadius: 11,
+    borderRadius: 12,
   },
   calendarCellToday: {
     borderWidth: 1,
     borderColor: colors.scoreHigh,
-    borderRadius: 11,
+    borderRadius: 12,
   },
   calendarDayName: {
-    width: 22,
+    width: 24,
     textAlign: 'center',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
     color: colors.textMuted,
   },
   calendarDayText: {
-    fontSize: 10,
+    fontSize: 11,
     color: colors.black,
   },
   calendarDayTextActive: {

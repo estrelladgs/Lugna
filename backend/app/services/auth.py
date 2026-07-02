@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 
 import bcrypt
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
 from jose import JWTError, jwt
 
 from app.config import settings
@@ -36,3 +38,9 @@ def create_refresh_token(user_id: str) -> str:
 
 def decode_token(token: str) -> dict:
     return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+
+
+def verify_google_id_token(id_token_str: str) -> dict:
+    return google_id_token.verify_oauth2_token(
+        id_token_str, google_requests.Request(), settings.GOOGLE_WEB_CLIENT_ID
+    )
