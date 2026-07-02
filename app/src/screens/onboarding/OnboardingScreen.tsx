@@ -1,122 +1,153 @@
-import React, { useRef, useState } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   Dimensions,
   TouchableOpacity,
   Image,
-  ListRenderItemInfo,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius, typography } from '../../theme';
 
 const { width } = Dimensions.get('window');
-
-interface Slide {
-  id: string;
-  title: string;
-  body: string;
-  image: any;
-}
-
-const SLIDES: Slide[] = [
-  {
-    id: '1',
-    title: 'Bienvenido a tu\nviaje de Pilates',
-    body: '',
-    image: require('../../../assets/onboarding1.png'),
-  },
-  {
-    id: '2',
-    title: '¿Qué es Pilates?',
-    body: 'Descubre un método que conecta cuerpo y mente. Fortalece tu centro de energía, mejora tu postura, gana flexibilidad y coordinación, y siente cómo cada movimiento transforma tu bienestar. ¡Tu viaje hacia un cuerpo más fuerte y ágil comienza aquí!',
-    image: require('../../../assets/onboarding2.png'),
-  },
-  {
-    id: '3',
-    title: 'IA para tu\ncorrección postural',
-    body: 'Nuestra tecnología analiza tu postura al instante, detectando desalineaciones y desequilibrios musculares. Corrige hábitos incorrectos, previene lesiones y reduce dolores musculoesqueléticos mientras entrenas.',
-    image: require('../../../assets/onboarding3.png'),
-  },
-];
+const TOTAL_PAGES = 4; // 3 content slides + 1 login/register
 
 type RootParamList = { Onboarding: undefined; Register: undefined; Login: undefined };
+
+// ─── Slide 1: Logo → Imagen → Título ────────────────────────────────────────
+
+function SlideOne() {
+  return (
+    <View style={styles.slide}>
+      <Image
+        source={require('../../../assets/Logo.png')}
+        style={styles.logo}
+        resizeMode="contain"
+      />
+      <View style={styles.imageContainer}>
+        <Image
+          source={require('../../../assets/onboarding1.png')}
+          style={styles.illustration}
+          resizeMode="contain"
+        />
+      </View>
+      <Text style={[typography.h1, styles.titleBottom]}>
+        {'Bienvenido a tu\nviaje de Pilates'}
+      </Text>
+    </View>
+  );
+}
+
+// ─── Slide 2: Título → Texto → Imagen ───────────────────────────────────────
+
+function SlideTwo() {
+  return (
+    <View style={styles.slide}>
+      <Text style={[typography.h1, styles.titleTop]}>¿Qué es Pilates?</Text>
+      <Text style={[typography.body, styles.body]}>
+        Descubre un método que conecta cuerpo y mente. Fortalece tu centro de energía, mejora tu
+        postura, gana flexibilidad y coordinación, y siente cómo cada movimiento transforma tu
+        bienestar. ¡Tu viaje hacia un cuerpo más fuerte y ágil comienza aquí!
+      </Text>
+      <View style={styles.imageContainer}>
+        <Image
+          source={require('../../../assets/onboarding2.png')}
+          style={styles.illustration}
+          resizeMode="contain"
+        />
+      </View>
+    </View>
+  );
+}
+
+// ─── Slide 3: Título → Imagen → Texto ───────────────────────────────────────
+
+function SlideThree() {
+  return (
+    <View style={styles.slide}>
+      <Text style={[typography.h1, styles.titleTop]}>
+        {'IA para tu\ncorrección postural'}
+      </Text>
+      <View style={styles.imageContainer}>
+        <Image
+          source={require('../../../assets/onboarding3.png')}
+          style={styles.illustration}
+          resizeMode="contain"
+        />
+      </View>
+      <Text style={[typography.body, styles.body]}>
+        Nuestra tecnología analiza tu postura al instante, detectando desalineaciones y
+        desequilibrios musculares. Corrige hábitos incorrectos, previene lesiones y reduce dolores
+        musculoesqueléticos mientras entrenas.
+      </Text>
+    </View>
+  );
+}
+
+// ─── Main ────────────────────────────────────────────────────────────────────
 
 export default function OnboardingScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootParamList>>();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const flatListRef = useRef<FlatList<Slide>>(null);
-
-  const isLast = currentIndex === SLIDES.length - 1;
 
   const handleNext = () => {
-    if (isLast) {
+    if (currentIndex === 2) {
       navigation.replace('Register');
     } else {
-      const next = currentIndex + 1;
-      flatListRef.current?.scrollToIndex({ index: next });
-      setCurrentIndex(next);
+      setCurrentIndex(currentIndex + 1);
     }
   };
 
-  const renderItem = ({ item }: ListRenderItemInfo<Slide>) => (
-    <View style={styles.slide}>
-      <View style={styles.imageContainer}>
-        <Image source={item.image} style={styles.illustration} resizeMode="contain" />
-      </View>
-      <Text style={[typography.h2, styles.title]}>{item.title}</Text>
-      {item.body ? <Text style={[typography.body, styles.body]}>{item.body}</Text> : null}
-    </View>
-  );
-
   return (
     <View style={styles.container}>
-      <FlatList
-        ref={flatListRef}
-        data={SLIDES}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        style={{ flex: 1 }}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEnabled={false}
-        getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
-      />
+      {currentIndex === 0 && <SlideOne />}
+      {currentIndex === 1 && <SlideTwo />}
+      {currentIndex === 2 && <SlideThree />}
 
       <View style={styles.footer}>
+        <TouchableOpacity style={styles.button} onPress={handleNext} activeOpacity={0.85}>
+          <Text style={styles.buttonText}>{currentIndex === 0 ? 'Empezar' : 'Siguiente'}</Text>
+        </TouchableOpacity>
+
         <View style={styles.dotsRow}>
-          {[...Array(SLIDES.length)].map((_, i) => (
+          {[...Array(TOTAL_PAGES)].map((_, i) => (
             <View
               key={i}
               style={[styles.dot, i === currentIndex ? styles.dotActive : styles.dotInactive]}
             />
           ))}
         </View>
-
-        <TouchableOpacity style={styles.button} onPress={handleNext} activeOpacity={0.85}>
-          <Text style={typography.button}>{currentIndex === 0 ? 'Empezar' : 'Siguiente'}</Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
 }
+
+// ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
+
+  // Slide base
   slide: {
-    width,
-    alignSelf: 'stretch',
+    flex: 1,
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxl + spacing.xl,
+    paddingTop: spacing.xxl,
   },
+
+  // Logo (slide 1)
+  logo: {
+    width: width * 0.38,
+    height: 72,
+    marginBottom: spacing.sm,
+  },
+
+  // Image container — toma el espacio restante verticalmente
   imageContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -124,25 +155,52 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   illustration: {
-    width: width * 0.55,
-    height: width * 0.55,
+    width: width * 0.6,
+    height: width * 0.6,
   },
-  title: {
+
+  // Títulos
+  titleTop: {
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
+  titleBottom: {
     textAlign: 'center',
     marginTop: spacing.lg,
     marginBottom: spacing.md,
   },
+
+  // Cuerpo de texto
   body: {
     textAlign: 'center',
     color: colors.black,
     opacity: 0.75,
+    marginBottom: spacing.sm,
   },
+
+  // Footer
   footer: {
     paddingBottom: spacing.xxl,
     paddingHorizontal: spacing.xl,
     alignItems: 'center',
     gap: spacing.lg,
   },
+
+  // Botón
+  button: {
+    width: '100%',
+    backgroundColor: colors.backgroundLight,
+    paddingVertical: spacing.md + 2,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+  },
+  buttonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+
+  // Dots
   dotsRow: {
     flexDirection: 'row',
     gap: spacing.xs + 2,
@@ -158,12 +216,5 @@ const styles = StyleSheet.create({
   },
   dotInactive: {
     backgroundColor: colors.dotInactive,
-  },
-  button: {
-    width: '100%',
-    backgroundColor: colors.white,
-    paddingVertical: spacing.md + 2,
-    borderRadius: radius.pill,
-    alignItems: 'center',
   },
 });
