@@ -9,8 +9,10 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { GoogleSignin, isErrorWithCode, statusCodes } from '../../services/googleSignIn';
 import { authService } from '../../services/authService';
 import { useAuthStore } from '../../store/authStore';
 import { colors, spacing, radius, typography } from '../../theme';
@@ -24,6 +26,26 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      if (response.type !== 'success' || !response.data.idToken) {
+        return;
+      }
+      const { user, tokens } = await authService.googleLogin(response.data.idToken);
+      await setUser(user, tokens);
+    } catch (err) {
+      if (!isErrorWithCode(err) || err.code !== statusCodes.SIGN_IN_CANCELLED) {
+        Alert.alert('Error', 'No se pudo iniciar sesión con Google.');
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -42,73 +64,85 @@ export default function LoginScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Text style={[typography.h1, styles.title]}>Iniciar Sesión</Text>
-
-      <View style={styles.form}>
-        <Text style={[typography.label, styles.labelIndent]}>Email</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Inserta tu email"
-          placeholderTextColor={colors.textMuted}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-
-        <Text style={[typography.label, styles.fieldLabel, styles.labelIndent]}>Contraseña</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Inserta tu contraseña"
-          placeholderTextColor={colors.textMuted}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-      </View>
-
-      <Text style={styles.registerText}>
-        ¿No tienes cuenta?{' '}
-        <Text style={styles.registerLink} onPress={() => navigation.navigate('Register')}>
-          Regístrate
-        </Text>
-      </Text>
-
-      <View style={styles.socialRow}>
-        <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
-          <Text style={styles.socialIcon}>G</Text>
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity
-        style={styles.button}
-        onPress={handleLogin}
-        activeOpacity={0.85}
-        disabled={loading}
+    <SafeAreaView style={styles.safe}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
       >
-        {loading ? (
-          <ActivityIndicator color={colors.primary} />
-        ) : (
-          <Text style={typography.button}>Entrar</Text>
-        )}
-      </TouchableOpacity>
+        <Text style={[typography.h1, styles.title]}>Iniciar Sesión</Text>
 
-      <View style={styles.dotsRow}>
-        {[0, 1, 2, 3].map((i) => (
-          <View key={i} style={[styles.dot, i === 3 ? styles.dotActive : styles.dotInactive]} />
-        ))}
-      </View>
-    </ScrollView>
+        <View style={styles.form}>
+          <Text style={[typography.label, styles.labelIndent]}>Email</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Inserta tu email"
+            placeholderTextColor={colors.textMuted}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+
+          <Text style={[typography.label, styles.fieldLabel, styles.labelIndent]}>Contraseña</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Inserta tu contraseña"
+            placeholderTextColor={colors.textMuted}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+        </View>
+
+        <Text style={styles.registerText}>
+          ¿No tienes cuenta?{' '}
+          <Text style={styles.registerLink} onPress={() => navigation.navigate('Register')}>
+            Regístrate
+          </Text>
+        </Text>
+
+        <View style={styles.socialRow}>
+          <TouchableOpacity
+            style={styles.socialButton}
+            activeOpacity={0.8}
+            onPress={handleGoogleLogin}
+            disabled={googleLoading}
+          >
+            {googleLoading ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : (
+              <Text style={styles.socialIcon}>G</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleLogin}
+          activeOpacity={0.85}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : (
+            <Text style={typography.button}>Entrar</Text>
+          )}
+        </TouchableOpacity>
+
+        <View style={styles.dotsRow}>
+          {[0, 1, 2, 3].map((i) => (
+            <View key={i} style={[styles.dot, i === 3 ? styles.dotActive : styles.dotInactive]} />
+          ))}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: colors.backgroundLight },
+  safe: { flex: 1, backgroundColor: colors.backgroundLight },
+  scroll: { flex: 1 },
   container: {
     flexGrow: 1,
     justifyContent: 'center',

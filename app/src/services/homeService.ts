@@ -35,7 +35,9 @@ export async function getLiveClasses(): Promise<LiveClass[]> {
 }
 
 export async function getActivity(): Promise<ActivityData> {
-  const { data } = await api.get<ActivityData>('/home/activity');
+  const { data } = await api.get<ActivityData>('/home/activity', {
+    params: { tz_offset_minutes: new Date().getTimezoneOffset() },
+  });
   return data;
 }
 

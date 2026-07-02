@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ScrollView, Alert, ActivityIndicator,
 } from 'react-native';
 import Svg, { Circle, Text as SvgText } from 'react-native-svg';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../services/authService';
 import { getActivity, getProgress } from '../../services/homeService';
@@ -26,7 +27,7 @@ function DonutChart({ percentage, size = 90 }: { percentage: number; size?: numb
       />
       <Circle
         cx={size / 2} cy={size / 2} r={r}
-        stroke={colors.black} strokeWidth={strokeWidth} fill="none"
+        stroke={colors.primary} strokeWidth={strokeWidth} fill="none"
         strokeDasharray={circumference} strokeDashoffset={offset}
         strokeLinecap="round"
         transform={`rotate(-90, ${size / 2}, ${size / 2})`}
@@ -67,7 +68,11 @@ export default function ProgressScreen() {
     }
   }, []);
 
-  useEffect(() => { loadStats(); }, [loadStats]);
+  useFocusEffect(
+    useCallback(() => {
+      loadStats();
+    }, [loadStats]),
+  );
 
   const handleSave = async () => {
     if (!name.trim() || !email.trim()) return;
@@ -125,6 +130,7 @@ export default function ProgressScreen() {
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
+        <Text style={styles.userName} numberOfLines={1}>{user?.name ?? 'Usuario'}</Text>
         {!editing && (
           <TouchableOpacity onPress={() => setEditing(true)} style={styles.editButton}>
             <Text style={styles.editButtonText}>Editar perfil</Text>
@@ -200,7 +206,7 @@ export default function ProgressScreen() {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <DonutChart percentage={percentage} />
+              <DonutChart percentage={percentage} size={70} />
               <Text style={styles.statLabel}>niveles completados</Text>
             </View>
           </View>
@@ -230,29 +236,41 @@ export default function ProgressScreen() {
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.background },
   container: {
-    padding: spacing.xl,
-    paddingTop: spacing.xxl + spacing.lg,
-    paddingBottom: spacing.xxl,
+    padding: spacing.lg,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.lg,
+    flexGrow: 1,
   },
 
   // Avatar
   avatarSection: {
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.backgroundLight,
+    width: 88,
+    height: 88,
+    borderRadius: 50,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   avatarText: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
-    color: colors.primary,
+    color: colors.white,
+  },
+  userName: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.black,
+    marginBottom: spacing.xs,
   },
   editButton: {
     paddingVertical: spacing.xs,
@@ -262,52 +280,57 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   editButtonText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     color: colors.primary,
   },
 
   // Info card
   card: {
-    backgroundColor: colors.backgroundLight,
+    backgroundColor: '#FFFFFF',
     borderRadius: radius.lg,
     padding: spacing.lg,
     marginBottom: spacing.lg,
+    shadowColor: colors.backgroundLight,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 2,
   },
   fieldLabel: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '700',
     color: colors.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   fieldValue: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '500',
     color: colors.black,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   input: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '500',
     color: colors.black,
     borderBottomWidth: 1.5,
     borderBottomColor: colors.primary,
     paddingVertical: spacing.xs,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   separator: {
     height: 1,
     backgroundColor: colors.primary,
     opacity: 0.15,
-    marginVertical: spacing.sm,
+    marginVertical: spacing.xs,
   },
   editActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: spacing.sm,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   cancelBtn: {
     paddingVertical: spacing.xs,
@@ -316,7 +339,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primary,
   },
-  cancelBtnText: { fontSize: 14, fontWeight: '600', color: colors.primary },
+  cancelBtnText: { fontSize: 16, fontWeight: '600', color: colors.primary },
   saveBtn: {
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
@@ -326,21 +349,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveBtnDisabled: { opacity: 0.6 },
-  saveBtnText: { fontSize: 14, fontWeight: '700', color: colors.background },
+  saveBtnText: { fontSize: 16, fontWeight: '700', color: colors.background },
 
   // Stats
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: colors.black,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
+    marginLeft: spacing.sm,
   },
   statsCard: {
-    backgroundColor: colors.backgroundLight,
+    backgroundColor: '#FFFFFF',
     borderRadius: radius.lg,
     padding: spacing.lg,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
     alignItems: 'center',
+    shadowColor: colors.backgroundLight,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 2,
   },
   statsRow: {
     flexDirection: 'row',
@@ -349,48 +378,50 @@ const styles = StyleSheet.create({
   },
   statItem: { alignItems: 'center', flex: 1 },
   streakRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  statNumber: { fontSize: 36, fontWeight: '800', color: colors.black },
+  statNumber: { fontSize: 30, fontWeight: '800', color: colors.black },
   statLabel: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '600',
     color: colors.primary,
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 2,
   },
   statDivider: {
-    width: 1,
-    height: 70,
+    width: 2,
+    height: 56,
     backgroundColor: colors.primary,
-    opacity: 0.2,
+    opacity: 0.5,
   },
 
   // Account actions
   actionsSection: {
     gap: spacing.sm,
-    marginTop: spacing.xl,
+    marginTop: spacing.sm,
   },
   logoutBtn: {
-    backgroundColor: colors.backgroundLight,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  logoutText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  deleteBtn: {
-    backgroundColor: colors.backgroundLight,
+    backgroundColor: '#FFFFFF',
     borderRadius: radius.lg,
     paddingVertical: spacing.md,
     alignItems: 'center',
     borderWidth: 1.5,
+    borderColor: colors.primary,
+  },
+  logoutText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  deleteBtn: {
+    backgroundColor: 'transparent',
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    borderWidth: 1.5,
     borderColor: '#C0392B',
+    alignItems: 'center',
   },
   deleteText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#C0392B',
   },
 });

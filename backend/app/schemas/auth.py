@@ -16,6 +16,10 @@ class RefreshRequest(BaseModel):
     refreshToken: str
 
 
+class GoogleAuthRequest(BaseModel):
+    idToken: str
+
+
 class UserOut(BaseModel):
     id: str
     email: str

@@ -61,23 +61,25 @@ export default function RoutineListScreen() {
               onPress={() => navigation.navigate('RoutineDetail', { routine: item })}
               activeOpacity={0.85}
             >
-              {thumbnail && (
-                <Image
-                  source={{ uri: thumbnail }}
-                  style={styles.thumbnail}
-                  resizeMode="cover"
-                />
-              )}
-              <View style={styles.cardBody}>
-                <Text style={styles.cardTitle}>{item.name}</Text>
-                <View style={styles.metaRow}>
-                  <Text style={styles.metaText}>{item.durationMinutes} min</Text>
-                  <Text style={styles.metaDot}>·</Text>
-                  <Text style={styles.metaText}>
-                    {DIFFICULTY_LABEL[item.difficulty] ?? item.difficulty}
-                  </Text>
+              <View style={styles.cardInner}>
+                {thumbnail && (
+                  <Image
+                    source={{ uri: thumbnail }}
+                    style={styles.thumbnail}
+                    resizeMode="cover"
+                  />
+                )}
+                <View style={styles.cardBody}>
+                  <Text style={styles.cardTitle}>{item.name}</Text>
+                  <View style={styles.metaRow}>
+                    <Text style={styles.metaText}>{item.durationMinutes} min</Text>
+                    <Text style={styles.metaDot}>·</Text>
+                    <Text style={styles.metaText}>
+                      {DIFFICULTY_LABEL[item.difficulty] ?? item.difficulty}
+                    </Text>
+                  </View>
+                  <Text style={styles.desc} numberOfLines={2}>{item.description}</Text>
                 </View>
-                <Text style={styles.desc} numberOfLines={2}>{item.description}</Text>
               </View>
             </TouchableOpacity>
           );
@@ -106,9 +108,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: { marginBottom: spacing.lg },
-  list: { gap: spacing.md, paddingBottom: spacing.xxl },
+  list: { gap: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.xxl },
   card: {
-    backgroundColor: colors.backgroundLight,
+    backgroundColor: '#FFFFFF',
+    borderRadius: radius.lg,
+    shadowColor: colors.backgroundLight,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  cardInner: {
     borderRadius: radius.lg,
     overflow: 'hidden',
   },

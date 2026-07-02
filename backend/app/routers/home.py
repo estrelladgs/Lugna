@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.dependencies import get_current_user, get_db
@@ -42,20 +42,30 @@ def get_live_classes(
 
 @router.get("/activity", response_model=ActivityOut)
 def get_activity(
+    tz_offset_minutes: int = Query(0, description="Client's Date.getTimezoneOffset() value"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    sessions = (
+    posture_sessions = (
         db.query(PostureSession)
         .filter(PostureSession.user_id == current_user.id)
         .all()
     )
+    routine_sessions = (
+        db.query(RoutineSession)
+        .filter(RoutineSession.user_id == current_user.id)
+        .all()
+    )
+    offset = timedelta(minutes=tz_offset_minutes)
     active_dates: set[str] = set()
-    for s in sessions:
+    for s in posture_sessions:
         if s.created_at:
-            active_dates.add(s.created_at.date().isoformat())
+            active_dates.add((s.created_at - offset).date().isoformat())
+    for s in routine_sessions:
+        if s.started_at:
+            active_dates.add((s.started_at - offset).date().isoformat())
 
-    today = datetime.utcnow().date()
+    today = (datetime.utcnow() - offset).date()
     streak = 0
     current_date = today
     while current_date.isoformat() in active_dates:
