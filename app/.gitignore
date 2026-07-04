@@ -40,6 +40,10 @@ yarn-error.*
 /ios
 /android
 
+# downloaded build artifacts
+*.apk
+*.aab
+
 # claude
 .claude/
 
