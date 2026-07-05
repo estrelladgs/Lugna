@@ -16,10 +16,11 @@ export const postureService = {
     postureId: PostureId,
     frameBase64: string
   ): Promise<PostureFeedback> => {
-    const { data } = await api.post<PostureFeedback>('/posture/analyze', {
-      postureId,
-      frame: frameBase64,
-    });
+    const { data } = await api.post<PostureFeedback>(
+      '/posture/analyze',
+      { postureId, frame: frameBase64 },
+      { timeout: 20000 }
+    );
     return data;
   },
 

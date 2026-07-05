@@ -7,7 +7,7 @@ import { PostureId, PostureSession } from '../types';
 
 export type PostureStackParamList = {
   PostureSelect: undefined;
-  PostureCamera: { postureId: PostureId };
+  PostureCamera: { postureId: PostureId; postureName: string };
   PostureResult: { session: PostureSession };
 };
 

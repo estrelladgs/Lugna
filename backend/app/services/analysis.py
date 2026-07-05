@@ -1,21 +1,63 @@
 """
 Posture analysis service.
-Uses MediaPipe when available; falls back to a rule-based mock otherwise.
+Uses MediaPipe (Tasks API) when available; falls back to a rule-based mock otherwise.
 """
 
 import base64
-import math
-from typing import Dict, List, Optional
+import os
+import threading
+import urllib.request
+from typing import Dict, List, Optional, Tuple
 
 try:
     import cv2
     import mediapipe as mp
     import numpy as np
+    from mediapipe.tasks.python import BaseOptions
+    from mediapipe.tasks.python import vision
 
-    _mp_pose = mp.solutions.pose
     MEDIAPIPE_AVAILABLE = True
 except ImportError:
     MEDIAPIPE_AVAILABLE = False
+
+
+# ---------------------------------------------------------------------------
+# Pose landmarker model (Tasks API) — lazy download + singleton instance
+# ---------------------------------------------------------------------------
+
+_MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "ml_models")
+_MODEL_PATH = os.path.join(_MODEL_DIR, "pose_landmarker_lite.task")
+_MODEL_URL = (
+    "https://storage.googleapis.com/mediapipe-models/pose_landmarker/"
+    "pose_landmarker_lite/float16/latest/pose_landmarker_lite.task"
+)
+
+_landmarker = None
+_landmarker_lock = threading.Lock()
+
+
+def _get_landmarker():
+    """Lazily download the model file and build a singleton PoseLandmarker."""
+    global _landmarker
+    if _landmarker is not None:
+        return _landmarker
+
+    with _landmarker_lock:
+        if _landmarker is not None:
+            return _landmarker
+
+        os.makedirs(_MODEL_DIR, exist_ok=True)
+        if not os.path.exists(_MODEL_PATH):
+            urllib.request.urlretrieve(_MODEL_URL, _MODEL_PATH)
+
+        options = vision.PoseLandmarkerOptions(
+            base_options=BaseOptions(model_asset_path=_MODEL_PATH),
+            running_mode=vision.RunningMode.IMAGE,
+            num_poses=1,
+            min_pose_detection_confidence=0.5,
+        )
+        _landmarker = vision.PoseLandmarker.create_from_options(options)
+        return _landmarker
 
 
 # ---------------------------------------------------------------------------
@@ -40,12 +82,6 @@ def _lm(landmarks, idx):
     return (lm.x, lm.y)
 
 
-def _lm3(landmarks, idx):
-    """Return (x, y, z) for a landmark index."""
-    lm = landmarks[idx]
-    return (lm.x, lm.y, lm.z)
-
-
 # MediaPipe landmark indices
 _L_SHOULDER = 11
 _R_SHOULDER = 12
@@ -61,13 +97,33 @@ _L_ANKLE = 27
 _R_ANKLE = 28
 
 
+class _Result:
+    """Accumulator for a single posture check pass."""
+
+    def __init__(self):
+        self.score = 100.0
+        self.corrections: List[str] = []
+        self.bad_landmarks: List[int] = []
+
+    def fail(self, points: float, message: str, landmarks: Tuple[int, ...]):
+        self.score -= points
+        self.corrections.append(message)
+        self.bad_landmarks.extend(landmarks)
+
+    def as_dict(self) -> Dict:
+        return {
+            "score": max(0.0, self.score),
+            "corrections": self.corrections,
+            "bad_landmarks": sorted(set(self.bad_landmarks)),
+        }
+
+
 # ---------------------------------------------------------------------------
 # Per-posture analyzers
 # ---------------------------------------------------------------------------
 
 def _analyze_plank(lm) -> Dict:
-    corrections = []
-    score = 100.0
+    r = _Result()
 
     shoulder = _lm(lm, _L_SHOULDER)
     hip = _lm(lm, _L_HIP)
@@ -77,25 +133,24 @@ def _analyze_plank(lm) -> Dict:
     # Ideal straight line → angle near 180°
     deviation = abs(180.0 - body_angle)
     if deviation > 20:
-        score -= 40
         if hip[1] < shoulder[1] - 0.05:
-            corrections.append("Baja las caderas; el cuerpo debe formar una línea recta.")
+            r.fail(40, "Baja las caderas; el cuerpo debe formar una línea recta.",
+                   (_L_SHOULDER, _L_HIP, _L_ANKLE))
         else:
-            corrections.append("Eleva las caderas; evita que la pelvis caiga.")
+            r.fail(40, "Eleva las caderas; evita que la pelvis caiga.",
+                   (_L_SHOULDER, _L_HIP, _L_ANKLE))
 
     wrist = _lm(lm, _L_WRIST)
     shoulder_over_wrist = abs(wrist[0] - shoulder[0])
     if shoulder_over_wrist > 0.1:
-        score -= 20
-        corrections.append("Coloca los hombros directamente sobre las muñecas.")
+        r.fail(20, "Coloca los hombros directamente sobre las muñecas.",
+               (_L_SHOULDER, _L_WRIST))
 
-    score = max(0.0, score)
-    return {"score": score, "corrections": corrections}
+    return r.as_dict()
 
 
 def _analyze_hundred(lm) -> Dict:
-    corrections = []
-    score = 100.0
+    r = _Result()
 
     hip = _lm(lm, _L_HIP)
     knee = _lm(lm, _L_KNEE)
@@ -104,27 +159,23 @@ def _analyze_hundred(lm) -> Dict:
     leg_angle = _angle(hip, knee, ankle)
     # Legs should be extended (~180°) at ~45° from the floor
     if leg_angle < 150:
-        score -= 30
-        corrections.append("Extiende completamente las piernas.")
+        r.fail(30, "Extiende completamente las piernas.", (_L_HIP, _L_KNEE, _L_ANKLE))
 
     shoulder = _lm(lm, _L_SHOULDER)
     # Head/shoulder should be lifted (lower y value = higher on screen)
     if shoulder[1] > hip[1] - 0.05:
-        score -= 30
-        corrections.append("Eleva los hombros y la cabeza del suelo; lleva el mentón al pecho.")
+        r.fail(30, "Eleva los hombros y la cabeza del suelo; lleva el mentón al pecho.",
+               (_L_SHOULDER,))
 
     wrist = _lm(lm, _L_WRIST)
     if wrist[1] > hip[1]:
-        score -= 20
-        corrections.append("Mantén los brazos paralelos al suelo durante el bombeo.")
+        r.fail(20, "Mantén los brazos paralelos al suelo durante el bombeo.", (_L_WRIST,))
 
-    score = max(0.0, score)
-    return {"score": score, "corrections": corrections}
+    return r.as_dict()
 
 
 def _analyze_roll_up(lm) -> Dict:
-    corrections = []
-    score = 100.0
+    r = _Result()
 
     shoulder = _lm(lm, _L_SHOULDER)
     hip = _lm(lm, _L_HIP)
@@ -133,21 +184,18 @@ def _analyze_roll_up(lm) -> Dict:
     torso_angle = _angle(knee, hip, shoulder)
     # Forward fold: torso angle should be small (<90°)
     if torso_angle > 100:
-        score -= 40
-        corrections.append("Redondea más la columna y lleva el torso hacia los pies.")
+        r.fail(40, "Redondea más la columna y lleva el torso hacia los pies.",
+               (_L_SHOULDER, _L_HIP, _L_KNEE))
 
     wrist = _lm(lm, _L_WRIST)
     if wrist[1] > knee[1]:
-        score -= 20
-        corrections.append("Extiende los brazos más hacia los pies.")
+        r.fail(20, "Extiende los brazos más hacia los pies.", (_L_WRIST, _L_KNEE))
 
-    score = max(0.0, score)
-    return {"score": score, "corrections": corrections}
+    return r.as_dict()
 
 
 def _analyze_single_leg_stretch(lm) -> Dict:
-    corrections = []
-    score = 100.0
+    r = _Result()
 
     hip = _lm(lm, _L_HIP)
     knee = _lm(lm, _L_KNEE)
@@ -155,42 +203,34 @@ def _analyze_single_leg_stretch(lm) -> Dict:
 
     bent_leg_angle = _angle(hip, knee, ankle)
     if bent_leg_angle > 120:
-        score -= 30
-        corrections.append("Dobla más la rodilla y llévala hacia el pecho.")
+        r.fail(30, "Dobla más la rodilla y llévala hacia el pecho.", (_L_HIP, _L_KNEE, _L_ANKLE))
 
     shoulder = _lm(lm, _L_SHOULDER)
     if shoulder[1] > hip[1]:
-        score -= 30
-        corrections.append("Eleva la cabeza y los hombros del suelo.")
+        r.fail(30, "Eleva la cabeza y los hombros del suelo.", (_L_SHOULDER,))
 
-    score = max(0.0, score)
-    return {"score": score, "corrections": corrections}
+    return r.as_dict()
 
 
 def _analyze_double_leg_stretch(lm) -> Dict:
-    corrections = []
-    score = 100.0
+    r = _Result()
 
     shoulder = _lm(lm, _L_SHOULDER)
     hip = _lm(lm, _L_HIP)
     ankle = _lm(lm, _L_ANKLE)
 
     if shoulder[1] > hip[1]:
-        score -= 30
-        corrections.append("Mantén los hombros y la cabeza elevados del suelo.")
+        r.fail(30, "Mantén los hombros y la cabeza elevados del suelo.", (_L_SHOULDER,))
 
     leg_height = hip[1] - ankle[1]
     if leg_height < 0.05:
-        score -= 30
-        corrections.append("Eleva las piernas a aproximadamente 45° del suelo.")
+        r.fail(30, "Eleva las piernas a aproximadamente 45° del suelo.", (_L_HIP, _L_ANKLE))
 
-    score = max(0.0, score)
-    return {"score": score, "corrections": corrections}
+    return r.as_dict()
 
 
 def _analyze_spine_stretch(lm) -> Dict:
-    corrections = []
-    score = 100.0
+    r = _Result()
 
     shoulder = _lm(lm, _L_SHOULDER)
     hip = _lm(lm, _L_HIP)
@@ -198,22 +238,19 @@ def _analyze_spine_stretch(lm) -> Dict:
 
     forward_reach = shoulder[0] - knee[0]
     if forward_reach < 0.05:
-        score -= 40
-        corrections.append("Alarga más la columna hacia adelante; imagina que tocas los pies.")
+        r.fail(40, "Alarga más la columna hacia adelante; imagina que tocas los pies.",
+               (_L_SHOULDER, _L_KNEE))
 
     wrist = _lm(lm, _L_WRIST)
     arm_extension = wrist[0] - shoulder[0]
     if arm_extension < 0.1:
-        score -= 20
-        corrections.append("Extiende los brazos completamente al frente.")
+        r.fail(20, "Extiende los brazos completamente al frente.", (_L_WRIST, _L_SHOULDER))
 
-    score = max(0.0, score)
-    return {"score": score, "corrections": corrections}
+    return r.as_dict()
 
 
 def _analyze_rolling_like_a_ball(lm) -> Dict:
-    corrections = []
-    score = 100.0
+    r = _Result()
 
     shoulder = _lm(lm, _L_SHOULDER)
     hip = _lm(lm, _L_HIP)
@@ -222,39 +259,35 @@ def _analyze_rolling_like_a_ball(lm) -> Dict:
     # Knee should be close to chest
     knee_to_chest = abs(knee[0] - shoulder[0]) + abs(knee[1] - shoulder[1])
     if knee_to_chest > 0.3:
-        score -= 40
-        corrections.append("Lleva las rodillas más cerca del pecho para crear la curva en C.")
+        r.fail(40, "Lleva las rodillas más cerca del pecho para crear la curva en C.",
+               (_L_KNEE, _L_SHOULDER))
 
     torso_curve = _angle(shoulder, hip, knee)
     if torso_curve > 100:
-        score -= 30
-        corrections.append("Redondea más la espalda; mantén la curva en C durante todo el ejercicio.")
+        r.fail(30, "Redondea más la espalda; mantén la curva en C durante todo el ejercicio.",
+               (_L_SHOULDER, _L_HIP, _L_KNEE))
 
-    score = max(0.0, score)
-    return {"score": score, "corrections": corrections}
+    return r.as_dict()
 
 
 def _analyze_single_leg_circles(lm) -> Dict:
-    corrections = []
-    score = 100.0
+    r = _Result()
 
     l_hip = _lm(lm, _L_HIP)
     r_hip = _lm(lm, _R_HIP)
 
     hip_tilt = abs(l_hip[1] - r_hip[1])
     if hip_tilt > 0.05:
-        score -= 40
-        corrections.append("Mantén la pelvis estable y nivelada; evita el balanceo lateral.")
+        r.fail(40, "Mantén la pelvis estable y nivelada; evita el balanceo lateral.",
+               (_L_HIP, _R_HIP))
 
     l_knee = _lm(lm, _L_KNEE)
     l_ankle = _lm(lm, _L_ANKLE)
     leg_angle = _angle(l_hip, l_knee, l_ankle)
     if leg_angle < 150:
-        score -= 30
-        corrections.append("Extiende completamente la pierna en el aire.")
+        r.fail(30, "Extiende completamente la pierna en el aire.", (_L_HIP, _L_KNEE, _L_ANKLE))
 
-    score = max(0.0, score)
-    return {"score": score, "corrections": corrections}
+    return r.as_dict()
 
 
 _ANALYZERS = {
@@ -270,7 +303,8 @@ _ANALYZERS = {
 
 
 # ---------------------------------------------------------------------------
-# Mock fallback (used when MediaPipe is not installed)
+# Mock fallback (used when MediaPipe is not installed or the model can't be
+# downloaded, e.g. no internet on first run)
 # ---------------------------------------------------------------------------
 
 _MOCK_CORRECTIONS = {
@@ -321,6 +355,7 @@ def _mock_response(posture_id: str) -> dict:
         "score": round(score, 1),
         "corrections": corrections,
         "landmarks": None,
+        "incorrectLandmarks": [],
     }
 
 
@@ -350,12 +385,12 @@ def analyze_posture(posture_id: str, frame_base64: str) -> dict:
     except Exception:
         return _mock_response(posture_id)
 
-    with _mp_pose.Pose(
-        static_image_mode=True,
-        model_complexity=1,
-        min_detection_confidence=0.5,
-    ) as pose:
-        results = pose.process(img_rgb)
+    try:
+        landmarker = _get_landmarker()
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
+        results = landmarker.detect(mp_image)
+    except Exception:
+        return _mock_response(posture_id)
 
     if not results.pose_landmarks:
         return {
@@ -363,19 +398,21 @@ def analyze_posture(posture_id: str, frame_base64: str) -> dict:
             "score": 0.0,
             "corrections": ["No se detectó ninguna persona en la imagen. Asegúrate de que todo el cuerpo esté visible."],
             "landmarks": None,
+            "incorrectLandmarks": [],
         }
 
-    lm = results.pose_landmarks.landmark
+    lm = results.pose_landmarks[0]
 
     # Run posture-specific analysis
     analyzer = _ANALYZERS.get(posture_id)
     if analyzer is None:
-        result = {"score": 75.0, "corrections": []}
+        result = {"score": 75.0, "corrections": [], "bad_landmarks": []}
     else:
         result = analyzer(lm)
 
     score = result["score"]
     corrections = result["corrections"]
+    bad_landmarks = result["bad_landmarks"]
     is_correct = score >= 70 and len(corrections) == 0
 
     landmarks = [
@@ -388,4 +425,5 @@ def analyze_posture(posture_id: str, frame_base64: str) -> dict:
         "score": round(score, 1),
         "corrections": corrections,
         "landmarks": landmarks,
+        "incorrectLandmarks": bad_landmarks,
     }

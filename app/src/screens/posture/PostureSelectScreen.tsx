@@ -44,7 +44,7 @@ export default function PostureSelectScreen() {
         renderItem={({ item }) => (
           <PostureCard
             posture={item}
-            onPress={() => navigation.navigate('PostureCamera', { postureId: item.id })}
+            onPress={() => navigation.navigate('PostureCamera', { postureId: item.id, postureName: item.name })}
           />
         )}
         ListEmptyComponent={

@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import Base, engine, SessionLocal
-from app.routers import auth, home, postures, sessions
+from app.routers import auth, home, postures, sessions, users
 
 
 def _seed_db():
@@ -236,6 +236,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(users.router)
 app.include_router(postures.router)
 app.include_router(sessions.router)
 app.include_router(home.router)

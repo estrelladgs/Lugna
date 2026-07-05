@@ -30,6 +30,11 @@ class UserOut(BaseModel):
         from_attributes = True
 
 
+class UpdateProfileRequest(BaseModel):
+    name: str
+    email: EmailStr
+
+
 class TokensOut(BaseModel):
     accessToken: str
     refreshToken: str

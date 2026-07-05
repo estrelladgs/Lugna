@@ -13,7 +13,7 @@ python-dotenv==1.0.1
 alembic==1.14.0
 
 # Análisis de postura con IA (opcional — si no están disponibles se usa un mock)
-# mediapipe==0.10.18
-# opencv-python-headless==4.10.0.84
-# numpy==2.1.3
-# Pillow==11.1.0
+mediapipe==0.10.35
+opencv-python-headless==4.10.0.84
+numpy==2.5.1
+Pillow==12.3.0

@@ -43,3 +43,4 @@ class PostureFeedbackOut(BaseModel):
     score: float
     corrections: List[str]
     landmarks: Optional[List[LandmarkOut]] = None
+    incorrectLandmarks: List[int] = []

@@ -12,8 +12,9 @@ export const colors = {
   dotInactive: '#99BDDF',
   scoreHigh: '#2F4F75',
   scoreMedium: '#99BDDF',
-  scoreLow: '#2F4F75',
+  scoreLow: '#E4572E',
   header: '#99BDDF',
+  alert: '#E4572E',
 };
 
 export const spacing = {

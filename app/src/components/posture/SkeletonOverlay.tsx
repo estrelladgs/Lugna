@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import Svg, { Circle, Line } from 'react-native-svg';
 import { Landmark } from '../../types';
+import { colors } from '../../theme';
 
 const { width, height } = Dimensions.get('window');
 
@@ -18,10 +19,13 @@ const CONNECTIONS: [number, number][] = [
 
 interface Props {
   landmarks: Landmark[];
+  incorrectLandmarks?: number[];
 }
 
-export default function SkeletonOverlay({ landmarks }: Props) {
+export default function SkeletonOverlay({ landmarks, incorrectLandmarks = [] }: Props) {
   if (!landmarks || landmarks.length === 0) return null;
+
+  const isBad = (i: number) => incorrectLandmarks.includes(i);
 
   const toScreen = (lm: Landmark) => ({
     x: lm.x * width,
@@ -38,26 +42,28 @@ export default function SkeletonOverlay({ landmarks }: Props) {
           if ((lmA.visibility ?? 1) < 0.5 || (lmB.visibility ?? 1) < 0.5) return null;
           const posA = toScreen(lmA);
           const posB = toScreen(lmB);
+          const bad = isBad(a) || isBad(b);
           return (
             <Line
               key={i}
               x1={posA.x} y1={posA.y}
               x2={posB.x} y2={posB.y}
-              stroke="rgba(213,233,244,0.9)"
-              strokeWidth={2}
+              stroke={bad ? colors.alert : 'rgba(213,233,244,0.9)'}
+              strokeWidth={bad ? 3 : 2}
             />
           );
         })}
         {landmarks.map((lm, i) => {
           if ((lm.visibility ?? 1) < 0.5) return null;
           const pos = toScreen(lm);
+          const bad = isBad(i);
           return (
             <Circle
               key={i}
               cx={pos.x} cy={pos.y}
-              r={5}
-              fill="#D5E9F4"
-              stroke="rgba(153,189,223,0.9)"
+              r={bad ? 7 : 5}
+              fill={bad ? colors.alert : '#D5E9F4'}
+              stroke={bad ? colors.alert : 'rgba(153,189,223,0.9)'}
               strokeWidth={2}
             />
           );
