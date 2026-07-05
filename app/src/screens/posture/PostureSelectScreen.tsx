@@ -8,7 +8,7 @@ import { postureService } from '../../services/postureService';
 import { Posture } from '../../types';
 import PostureCard from '../../components/posture/PostureCard';
 import { PostureStackParamList } from '../../navigation/PostureNavigator';
-import { colors, spacing, typography } from '../../theme';
+import { colors, spacing, radius, typography } from '../../theme';
 
 type Nav = NativeStackNavigationProp<PostureStackParamList, 'PostureSelect'>;
 
@@ -27,7 +27,7 @@ export default function PostureSelectScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.black} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -35,12 +35,16 @@ export default function PostureSelectScreen() {
   return (
     <View style={styles.container}>
       <Text style={[typography.h2, styles.title]}>Elige una postura</Text>
+      <Text style={[typography.body, styles.subtitle]}>
+        Selecciona un ejercicio para corregir tu postura en tiempo real con la cámara.
+      </Text>
       <FlatList
         data={postures}
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={styles.row}
-        contentContainerStyle={{ gap: spacing.md }}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
           <PostureCard
             posture={item}
@@ -48,7 +52,9 @@ export default function PostureSelectScreen() {
           />
         )}
         ListEmptyComponent={
-          <Text style={[typography.body, styles.empty]}>No hay posturas disponibles.</Text>
+          <View style={styles.emptyCard}>
+            <Text style={[typography.body, styles.empty]}>No hay posturas disponibles.</Text>
+          </View>
         }
       />
     </View>
@@ -58,7 +64,15 @@ export default function PostureSelectScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, padding: spacing.xl, paddingTop: spacing.xxl + spacing.lg },
   center: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
-  title: { marginBottom: spacing.lg },
+  title: { marginBottom: spacing.xs },
+  subtitle: { color: colors.textMuted, marginBottom: spacing.lg },
   row: { gap: spacing.md },
-  empty: { textAlign: 'center', opacity: 0.6, marginTop: spacing.xl },
+  list: { gap: spacing.md, paddingBottom: spacing.xxl },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: radius.lg,
+    padding: spacing.xl,
+    marginTop: spacing.md,
+  },
+  empty: { textAlign: 'center', opacity: 0.6 },
 });

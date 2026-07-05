@@ -1,7 +1,8 @@
 import React, { useRef, useCallback, useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Image } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useAudioPlayer } from 'expo-audio';
+import * as Speech from 'expo-speech';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { usePostureSession } from '../../hooks/usePostureSession';
@@ -9,6 +10,7 @@ import FeedbackOverlay from '../../components/posture/FeedbackOverlay';
 import SkeletonOverlay from '../../components/posture/SkeletonOverlay';
 import { PostureStackParamList } from '../../navigation/PostureNavigator';
 import { POSTURE_GUIDES } from '../../constants/postureGuides';
+import { POSTURE_IMAGES } from '../../constants/postureImages';
 import { colors, spacing, radius, typography } from '../../theme';
 
 type Nav = NativeStackNavigationProp<PostureStackParamList, 'PostureCamera'>;
@@ -24,25 +26,51 @@ export default function PostureCameraScreen() {
   const [pictureSize, setPictureSize] = useState<string | undefined>(undefined);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevCorrectRef = useRef<boolean | null>(null);
+  const lastSpokenRef = useRef<string | null>(null);
+  const finishingRef = useRef(false);
   const cameraReadyRef = useRef(false);
   const [cameraReadyDisplay, setCameraReadyDisplay] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
 
   const successPlayer = useAudioPlayer(require('../../../assets/sounds/success.wav'));
-  const errorPlayer = useAudioPlayer(require('../../../assets/sounds/error.wav'));
 
   const guide = POSTURE_GUIDES[postureId];
 
+  const stopSession = useCallback(async () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    Speech.stop();
+    const session = await finish();
+    if (session) {
+      navigation.replace('PostureResult', { session });
+    } else {
+      navigation.goBack();
+    }
+  }, [finish, navigation]);
+
   useEffect(() => {
-    if (!latestFeedback) return;
-    const prev = prevCorrectRef.current;
-    if (prev !== null && prev !== latestFeedback.isCorrect) {
-      const player = latestFeedback.isCorrect ? successPlayer : errorPlayer;
-      player.seekTo(0);
-      player.play();
+    if (showGuide || !latestFeedback || finishingRef.current) return;
+
+    if (latestFeedback.isCorrect) {
+      lastSpokenRef.current = null;
+      if (prevCorrectRef.current !== true) {
+        finishingRef.current = true;
+        Speech.stop();
+        successPlayer.seekTo(0);
+        successPlayer.play();
+        setTimeout(() => {
+          stopSession();
+        }, 900);
+      }
+    } else {
+      const message = latestFeedback.corrections[0];
+      if (message && message !== lastSpokenRef.current) {
+        lastSpokenRef.current = message;
+        Speech.stop();
+        Speech.speak(message, { language: 'es-ES' });
+      }
     }
     prevCorrectRef.current = latestFeedback.isCorrect;
-  }, [latestFeedback, successPlayer, errorPlayer]);
+  }, [showGuide, latestFeedback, successPlayer, stopSession]);
 
   const handleCameraReady = useCallback(() => {
     cameraReadyRef.current = true;
@@ -69,6 +97,8 @@ export default function PostureCameraScreen() {
   const startSession = useCallback(() => {
     setShowGuide(false);
     prevCorrectRef.current = null;
+    lastSpokenRef.current = null;
+    finishingRef.current = false;
     setCaptureError(null);
     begin(postureId);
     intervalRef.current = setInterval(async () => {
@@ -92,19 +122,10 @@ export default function PostureCameraScreen() {
     }, 1500);
   }, [postureId, begin, analyzeFrame]);
 
-  const stopSession = useCallback(async () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    const session = await finish();
-    if (session) {
-      navigation.replace('PostureResult', { session });
-    } else {
-      navigation.goBack();
-    }
-  }, [finish, navigation]);
-
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      Speech.stop();
     };
   }, []);
 
@@ -160,6 +181,7 @@ export default function PostureCameraScreen() {
         <View style={styles.guideOverlay}>
           <View style={styles.guideCard}>
             <Text style={[typography.h3, styles.guideTitle]}>{postureName}</Text>
+            <Image source={POSTURE_IMAGES[postureId]} style={styles.guideImage} resizeMode="contain" />
             <Text style={[typography.body, styles.guideText]}>{guide.cameraPosition}</Text>
             {guide.tips.map((tip, i) => (
               <Text key={i} style={[typography.caption, styles.guideTip]}>• {tip}</Text>
@@ -217,6 +239,13 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   guideTitle: { marginBottom: spacing.sm, textTransform: 'capitalize' },
+  guideImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: radius.md,
+    marginBottom: spacing.md,
+    backgroundColor: colors.white,
+  },
   guideText: { marginBottom: spacing.md },
   guideTip: { marginBottom: spacing.xs },
   startBtn: {
