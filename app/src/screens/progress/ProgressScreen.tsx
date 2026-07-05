@@ -105,8 +105,12 @@ export default function ProgressScreen() {
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
-            try { await authService.deleteAccount(); } catch { /* continue */ }
-            logout();
+            try {
+              await authService.deleteAccount();
+              logout();
+            } catch {
+              Alert.alert('Error', 'No se ha podido eliminar la cuenta. Inténtalo de nuevo.');
+            }
           },
         },
       ],

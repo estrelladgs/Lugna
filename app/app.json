@@ -25,7 +25,14 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "expo-audio",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Lugna usa la cámara frontal para analizar tu postura en tiempo real durante los ejercicios. Las imágenes se procesan al instante y no se almacenan ni se comparten."
+        }
+      ]
     ],
     "extra": {
       "eas": {

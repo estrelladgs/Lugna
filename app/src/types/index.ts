@@ -41,6 +41,7 @@ export interface PostureFeedback {
   score: number;
   corrections: string[];
   landmarks?: Landmark[];
+  incorrectLandmarks?: number[];
 }
 
 export interface PostureSession {
