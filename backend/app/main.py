@@ -32,14 +32,6 @@ def _seed_db():
                     "image_url": None,
                 },
                 {
-                    "id": "roll_up",
-                    "name": "Roll Up",
-                    "description": "Articulación completa de la columna desde tumbado hasta sentado. Trabaja la flexibilidad de la columna y la fuerza abdominal.",
-                    "difficulty": "beginner",
-                    "muscle_groups": ["abdominales", "columna", "isquiotibiales"],
-                    "image_url": None,
-                },
-                {
                     "id": "single_leg_circles",
                     "name": "Círculos de Pierna",
                     "description": "Una pierna describe círculos en el aire manteniendo la pelvis estable. Mejora la movilidad de cadera y el control pélvico.",
@@ -91,6 +83,10 @@ def _seed_db():
             for p in posture_data:
                 db.add(Posture(**p))
             db.flush()
+
+        # Roll Up was removed from the posture-correction module (it's a movement,
+        # not a static posture) — drop it if it was seeded by an earlier run.
+        db.query(Posture).filter(Posture.id == "roll_up").delete()
 
         # ── Routines (upsert — edit & restart to update) ─────────────────────
         # To ADD a routine: add a new dict with a unique id.

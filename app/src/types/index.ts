@@ -12,7 +12,6 @@ export interface AuthTokens {
 
 export type PostureId =
   | 'hundred'
-  | 'roll_up'
   | 'single_leg_circles'
   | 'rolling_like_a_ball'
   | 'single_leg_stretch'
