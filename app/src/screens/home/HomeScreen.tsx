@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Image,
   Linking,
@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import Svg, { Circle, Text as SvgText } from 'react-native-svg';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useAuthStore } from '../../store/authStore';
 import { AppTabParamList } from '../../navigation/AppNavigator';
@@ -270,7 +270,13 @@ export default function HomeScreen() {
 
   const [liveClasses, setLiveClasses] = useState<LiveClass[]>([]);
   const [activity, setActivity] = useState<ActivityData>({ activeDays: [], streakDays: 0 });
-  const [progress, setProgress] = useState<ProgressData>({ completedLevels: 0, totalLevels: 8, percentage: 0 });
+  const [progress, setProgress] = useState<ProgressData>({
+    completedLevels: 0,
+    totalLevels: 8,
+    percentage: 0,
+    totalSessions: 0,
+    lastProgramName: null,
+  });
   const [continueRoutine, setContinueRoutine] = useState<ContinueRoutine | null>(null);
 
   const load = useCallback(async () => {
@@ -297,9 +303,11 @@ export default function HomeScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   const firstName = user?.name?.split(' ')[0] ?? 'alumna';
 
@@ -379,7 +387,7 @@ export default function HomeScreen() {
                 <DonutChart percentage={progress.percentage} />
               </View>
               <Text style={styles.levelsText}>
-                {Math.round(progress.percentage)}% de los niveles completados
+                {Math.round(progress.percentage)}% de los programas completados
               </Text>
             </View>
           </View>

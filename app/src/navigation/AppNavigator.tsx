@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeScreen from '../screens/home/HomeScreen';
 import RoutinesNavigator from './RoutinesNavigator';
 import ClassesScreen from '../screens/classes/ClassesScreen';
-import ProgressScreen from '../screens/progress/ProgressScreen';
+import ProgressNavigator from './ProgressNavigator';
 import PostureNavigator from './PostureNavigator';
 import { colors } from '../theme';
 import {
@@ -112,7 +112,7 @@ export default function AppNavigator() {
       />
       <Tab.Screen
         name="Progress"
-        component={ProgressScreen}
+        component={ProgressNavigator}
         options={{
           title: 'Perfil',
           tabBarIcon: ({ color }) => <PerfilIcon color={color} size={24} />,

@@ -46,4 +46,18 @@ export const authService = {
   deleteAccount: async (): Promise<void> => {
     await api.delete('/users/me');
   },
+
+  forgotPassword: async (email: string): Promise<{ message: string }> => {
+    const { data } = await api.post<{ message: string }>('/auth/password/forgot', { email });
+    return data;
+  },
+
+  resetPassword: async (email: string, code: string, newPassword: string): Promise<{ message: string }> => {
+    const { data } = await api.post<{ message: string }>('/auth/password/reset', {
+      email,
+      code,
+      newPassword,
+    });
+    return data;
+  },
 };

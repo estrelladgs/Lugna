@@ -103,20 +103,19 @@ export default function PostureCameraScreen() {
     begin(postureId);
     intervalRef.current = setInterval(async () => {
       if (!cameraRef.current) {
-        setCaptureError('La cámara todavía no está lista (sin referencia).');
+        setCaptureError('No se pudo acceder a la cámara. Inténtalo de nuevo.');
         return;
       }
       try {
         const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.3 });
         if (!photo?.base64) {
-          setCaptureError('La captura no devolvió datos de imagen (base64 vacío).');
+          setCaptureError('No se pudo acceder a la cámara. Inténtalo de nuevo.');
           return;
         }
         setCaptureError(null);
         await analyzeFrame(photo.base64);
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        setCaptureError(`Fallo al capturar foto: ${message}`);
+        setCaptureError('No se pudo acceder a la cámara. Inténtalo de nuevo.');
         console.warn('[posture] takePictureAsync failed', err);
       }
     }, 1500);

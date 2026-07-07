@@ -17,7 +17,7 @@ import { authService } from '../../services/authService';
 import { useAuthStore } from '../../store/authStore';
 import { colors, spacing, radius, typography } from '../../theme';
 
-type RootParamList = { Login: undefined; Register: undefined };
+type RootParamList = { Login: undefined; Register: undefined; ForgotPassword: undefined };
 
 export default function LoginScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootParamList>>();
@@ -95,6 +95,13 @@ export default function LoginScreen() {
           />
         </View>
 
+        <Text
+          style={styles.forgotLink}
+          onPress={() => navigation.navigate('ForgotPassword')}
+        >
+          ¿Has olvidado tu contraseña?
+        </Text>
+
         <Text style={styles.registerText}>
           ¿No tienes cuenta?{' '}
           <Text style={styles.registerLink} onPress={() => navigation.navigate('Register')}>
@@ -163,6 +170,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.black,
     marginTop: 2,
+  },
+  forgotLink: {
+    marginTop: spacing.sm,
+    fontSize: 13,
+    color: colors.primary,
+    textAlign: 'right',
+    paddingHorizontal: spacing.md,
+    textDecorationLine: 'underline',
   },
   registerText: {
     marginTop: spacing.lg,

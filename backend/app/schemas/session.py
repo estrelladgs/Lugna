@@ -24,6 +24,7 @@ class SessionIn(BaseModel):
 class SessionOut(BaseModel):
     id: str
     postureId: str
+    postureName: Optional[str] = None
     startedAt: str
     endedAt: Optional[str] = None
     durationSeconds: int

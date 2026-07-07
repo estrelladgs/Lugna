@@ -46,6 +46,7 @@ export interface PostureFeedback {
 export interface PostureSession {
   id: string;
   postureId: PostureId;
+  postureName?: string;
   startedAt: string;
   endedAt?: string;
   durationSeconds: number;
