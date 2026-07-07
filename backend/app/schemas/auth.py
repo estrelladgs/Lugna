@@ -35,6 +35,20 @@ class UpdateProfileRequest(BaseModel):
     email: EmailStr
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    code: str
+    newPassword: str
+
+
+class MessageOut(BaseModel):
+    message: str
+
+
 class TokensOut(BaseModel):
     accessToken: str
     refreshToken: str

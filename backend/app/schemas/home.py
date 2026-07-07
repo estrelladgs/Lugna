@@ -21,6 +21,8 @@ class ProgressOut(BaseModel):
     completedLevels: int
     totalLevels: int
     percentage: float
+    totalSessions: int
+    lastProgramName: Optional[str] = None
 
 
 class ContinueRoutineOut(BaseModel):

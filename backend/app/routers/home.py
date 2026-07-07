@@ -81,15 +81,40 @@ def get_progress(
     current_user: User = Depends(get_current_user),
 ):
     total = db.query(Routine).count()
-    sessions = (
+    posture_sessions = (
+        db.query(PostureSession)
+        .filter(PostureSession.user_id == current_user.id)
+        .all()
+    )
+    routine_sessions = (
         db.query(RoutineSession)
         .filter(RoutineSession.user_id == current_user.id)
         .all()
     )
-    completed = len({s.routine_id for s in sessions})
+    completed = len({s.routine_id for s in routine_sessions})
     percentage = round(completed / total * 100, 1) if total > 0 else 0.0
+    total_sessions = len(posture_sessions) + len(routine_sessions)
 
-    return ProgressOut(completedLevels=completed, totalLevels=total, percentage=percentage)
+    last_program_name = None
+    last_at = None
+    for s in posture_sessions:
+        if s.created_at and (last_at is None or s.created_at > last_at):
+            posture = db.query(Posture).filter(Posture.id == s.posture_id).first()
+            last_program_name = posture.name if posture else s.posture_id
+            last_at = s.created_at
+    for s in routine_sessions:
+        if s.started_at and (last_at is None or s.started_at > last_at):
+            routine = db.query(Routine).filter(Routine.id == s.routine_id).first()
+            last_program_name = routine.name if routine else s.routine_id
+            last_at = s.started_at
+
+    return ProgressOut(
+        completedLevels=completed,
+        totalLevels=total,
+        percentage=percentage,
+        totalSessions=total_sessions,
+        lastProgramName=last_program_name,
+    )
 
 
 @router.get("/continue-routine", response_model=ContinueRoutineOut)

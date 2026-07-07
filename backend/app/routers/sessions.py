@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.dependencies import get_current_user, get_db
+from app.models.posture import Posture
 from app.models.session import PostureSession
 from app.models.user import User
 from app.schemas.session import SessionIn, SessionOut
@@ -30,9 +31,12 @@ def save_session(
     db.merge(session)
     db.commit()
 
+    posture = db.query(Posture).filter(Posture.id == session.posture_id).first()
+
     return SessionOut(
         id=str(session.id),
         postureId=session.posture_id,
+        postureName=posture.name if posture else None,
         startedAt=session.started_at,
         endedAt=session.ended_at,
         durationSeconds=session.duration_seconds,
@@ -52,10 +56,12 @@ def get_sessions(
         .order_by(PostureSession.created_at.desc())
         .all()
     )
+    posture_names = {p.id: p.name for p in db.query(Posture).all()}
     return [
         SessionOut(
             id=str(s.id),
             postureId=s.posture_id,
+            postureName=posture_names.get(s.posture_id),
             startedAt=s.started_at,
             endedAt=s.ended_at,
             durationSeconds=s.duration_seconds,

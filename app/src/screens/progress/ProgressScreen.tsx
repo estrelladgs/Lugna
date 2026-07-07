@@ -4,12 +4,16 @@ import {
   ScrollView, Alert, ActivityIndicator,
 } from 'react-native';
 import Svg, { Circle, Text as SvgText } from 'react-native-svg';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../services/authService';
 import { getActivity, getProgress } from '../../services/homeService';
 import { RachaIcon } from '../../components/icons/TabIcons';
+import { ProgressStackParamList } from '../../navigation/ProgressNavigator';
 import { colors, spacing, radius, typography } from '../../theme';
+
+type Nav = NativeStackNavigationProp<ProgressStackParamList, 'ProgressHome'>;
 
 // ─── Donut Chart (small) ─────────────────────────────────────────────────────
 
@@ -45,6 +49,7 @@ function DonutChart({ percentage, size = 90 }: { percentage: number; size?: numb
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function ProgressScreen() {
+  const navigation = useNavigation<Nav>();
   const user = useAuthStore((s) => s.user);
   const updateUser = useAuthStore((s) => s.updateUser);
   const logout = useAuthStore((s) => s.logout);
@@ -56,6 +61,8 @@ export default function ProgressScreen() {
 
   const [streakDays, setStreakDays] = useState(0);
   const [percentage, setPercentage] = useState(0);
+  const [totalSessions, setTotalSessions] = useState(0);
+  const [lastProgramName, setLastProgramName] = useState<string | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
 
   const loadStats = useCallback(async () => {
@@ -63,6 +70,8 @@ export default function ProgressScreen() {
       const [act, prog] = await Promise.all([getActivity(), getProgress()]);
       setStreakDays(act.streakDays);
       setPercentage(prog.percentage);
+      setTotalSessions(prog.totalSessions);
+      setLastProgramName(prog.lastProgramName);
     } catch { /* ignore */ } finally {
       setLoadingStats(false);
     }
@@ -190,6 +199,15 @@ export default function ProgressScreen() {
             </TouchableOpacity>
           </View>
         )}
+
+        {!editing && (
+          <>
+            <View style={styles.separator} />
+            <TouchableOpacity onPress={() => navigation.navigate('ChangePassword')}>
+              <Text style={styles.changePasswordLink}>Cambiar contraseña</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
 
       {/* Stats */}
@@ -198,23 +216,73 @@ export default function ProgressScreen() {
         {loadingStats ? (
           <ActivityIndicator color={colors.black} />
         ) : (
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <View style={styles.streakRow}>
-                <Text style={styles.statNumber}>{streakDays}</Text>
-                <RachaIcon size={18} />
+          <>
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <View style={styles.streakRow}>
+                  <Text style={styles.statNumber}>{streakDays}</Text>
+                  <RachaIcon size={18} />
+                </View>
+                <Text style={styles.statLabel}>
+                  día{streakDays !== 1 ? 's' : ''} seguido{streakDays !== 1 ? 's' : ''}
+                </Text>
               </View>
-              <Text style={styles.statLabel}>
-                día{streakDays !== 1 ? 's' : ''} seguido{streakDays !== 1 ? 's' : ''}
-              </Text>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <DonutChart percentage={percentage} size={70} />
+                <Text style={styles.statLabel}>programas completados</Text>
+              </View>
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <DonutChart percentage={percentage} size={70} />
-              <Text style={styles.statLabel}>niveles completados</Text>
+
+            <View style={styles.statsSeparator} />
+
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Text style={styles.statNumber}>{totalSessions}</Text>
+                <Text style={styles.statLabel}>
+                  postura{totalSessions !== 1 ? 's' : ''} corregida{totalSessions !== 1 ? 's' : ''}
+                </Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.lastProgramValue} numberOfLines={2}>
+                  {lastProgramName ?? '—'}
+                </Text>
+                <Text style={styles.statLabel}>último programa</Text>
+              </View>
             </View>
-          </View>
+          </>
         )}
+      </View>
+
+      <TouchableOpacity
+        style={styles.historyBtn}
+        onPress={() => navigation.navigate('SessionHistory')}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.historyBtnText}>Ver historial de correcciones</Text>
+      </TouchableOpacity>
+
+      {/* Legal */}
+      <Text style={styles.sectionTitle}>Legal</Text>
+      <View style={styles.legalCard}>
+        <TouchableOpacity
+          style={styles.legalRow}
+          onPress={() => navigation.navigate('PrivacyPolicy')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.legalRowText}>Política de Privacidad</Text>
+          <Text style={styles.legalRowChevron}>›</Text>
+        </TouchableOpacity>
+        <View style={styles.separator} />
+        <TouchableOpacity
+          style={styles.legalRow}
+          onPress={() => navigation.navigate('TermsOfUse')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.legalRowText}>Condiciones de Uso</Text>
+          <Text style={styles.legalRowChevron}>›</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Account actions */}
@@ -354,6 +422,12 @@ const styles = StyleSheet.create({
   },
   saveBtnDisabled: { opacity: 0.6 },
   saveBtnText: { fontSize: 16, fontWeight: '700', color: colors.background },
+  changePasswordLink: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.primary,
+    textDecorationLine: 'underline',
+  },
 
   // Stats
   sectionTitle: {
@@ -395,6 +469,62 @@ const styles = StyleSheet.create({
     height: 56,
     backgroundColor: colors.primary,
     opacity: 0.5,
+  },
+  statsSeparator: {
+    height: 1,
+    backgroundColor: colors.primary,
+    opacity: 0.15,
+    width: '100%',
+    marginVertical: spacing.md,
+  },
+  lastProgramValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.black,
+    textAlign: 'center',
+  },
+  historyBtn: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+  },
+  historyBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+
+  // Legal
+  legalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    shadowColor: colors.backgroundLight,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  legalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+  },
+  legalRowText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.black,
+  },
+  legalRowChevron: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.textMuted,
   },
 
   // Account actions

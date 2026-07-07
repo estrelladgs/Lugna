@@ -19,6 +19,8 @@ export interface ProgressData {
   completedLevels: number;
   totalLevels: number;
   percentage: number;
+  totalSessions: number;
+  lastProgramName: string | null;
 }
 
 export interface ContinueRoutine {

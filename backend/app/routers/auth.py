@@ -1,15 +1,22 @@
+import random
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from jose import JWTError
 from sqlalchemy.orm import Session
 
 from app.dependencies import get_db
+from app.models.password_reset import PasswordResetCode
 from app.models.user import User
 from app.schemas.auth import (
     AuthResponse,
+    ForgotPasswordRequest,
     GoogleAuthRequest,
     LoginRequest,
+    MessageOut,
     RefreshRequest,
     RegisterRequest,
+    ResetPasswordRequest,
     TokensOut,
     UserOut,
 )
@@ -21,8 +28,11 @@ from app.services.auth import (
     verify_google_id_token,
     verify_password,
 )
+from app.services.email import send_password_reset_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+RESET_CODE_TTL_MINUTES = 15
 
 
 def _build_response(user: User) -> AuthResponse:
@@ -110,3 +120,67 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
         accessToken=create_access_token(str(user.id)),
         refreshToken=create_refresh_token(str(user.id)),
     )
+
+
+@router.post("/password/forgot", response_model=MessageOut)
+def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    generic_response = MessageOut(
+        message="Si el correo está registrado, recibirás un código de verificación."
+    )
+
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user:
+        return generic_response
+
+    code = f"{random.randint(0, 999999):06d}"
+    db.query(PasswordResetCode).filter(
+        PasswordResetCode.user_id == user.id,
+        PasswordResetCode.used.is_(False),
+    ).delete()
+    db.add(
+        PasswordResetCode(
+            user_id=user.id,
+            code=code,
+            expires_at=datetime.utcnow() + timedelta(minutes=RESET_CODE_TTL_MINUTES),
+        )
+    )
+    db.commit()
+
+    try:
+        send_password_reset_email(user.email, code)
+    except Exception:
+        # No exponemos el fallo de envío al cliente (RF19): el código queda
+        # guardado y el usuario puede reintentar o reenviar más tarde.
+        print(f"[email] Fallo al enviar el código a {user.email}")
+
+    return generic_response
+
+
+@router.post("/password/reset", response_model=MessageOut)
+def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+    invalid_code = HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST, detail="Código inválido o caducado."
+    )
+
+    user = db.query(User).filter(User.email == payload.email).first()
+    if not user:
+        raise invalid_code
+
+    reset_code = (
+        db.query(PasswordResetCode)
+        .filter(
+            PasswordResetCode.user_id == user.id,
+            PasswordResetCode.code == payload.code,
+            PasswordResetCode.used.is_(False),
+        )
+        .order_by(PasswordResetCode.created_at.desc())
+        .first()
+    )
+    if not reset_code or reset_code.expires_at < datetime.utcnow():
+        raise invalid_code
+
+    user.hashed_password = hash_password(payload.newPassword)
+    reset_code.used = True
+    db.commit()
+
+    return MessageOut(message="Contraseña actualizada correctamente.")
