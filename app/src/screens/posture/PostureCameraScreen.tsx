@@ -28,6 +28,7 @@ export default function PostureCameraScreen() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevCorrectRef = useRef<boolean | null>(null);
   const lastSpokenRef = useRef<string | null>(null);
+  const speakTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finishingRef = useRef(false);
   const cameraReadyRef = useRef(false);
   const [cameraReadyDisplay, setCameraReadyDisplay] = useState(false);
@@ -46,6 +47,7 @@ export default function PostureCameraScreen() {
 
   const stopSession = useCallback(async () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
+    if (speakTimeoutRef.current) clearTimeout(speakTimeoutRef.current);
     Speech.stop();
     const session = await finish();
     if (session) {
@@ -62,6 +64,7 @@ export default function PostureCameraScreen() {
       lastSpokenRef.current = null;
       if (prevCorrectRef.current !== true) {
         finishingRef.current = true;
+        if (speakTimeoutRef.current) clearTimeout(speakTimeoutRef.current);
         Speech.stop();
         successPlayer.seekTo(0);
         successPlayer.play();
@@ -73,11 +76,16 @@ export default function PostureCameraScreen() {
       const message = latestFeedback.corrections[0];
       if (message && message !== lastSpokenRef.current) {
         lastSpokenRef.current = message;
+        if (speakTimeoutRef.current) clearTimeout(speakTimeoutRef.current);
         Speech.stop();
-        Speech.speak(message, {
-          language: 'es-ES',
-          onError: (err) => console.warn('[TTS] speak error', err),
-        });
+        // Chrome/Edge silently drop speak() if it's called synchronously right
+        // after cancel() (crbug.com/679437) — defer it a tick so cancel settles first.
+        speakTimeoutRef.current = setTimeout(() => {
+          Speech.speak(message, {
+            language: 'es-ES',
+            onError: (err) => console.warn('[TTS] speak error', err),
+          });
+        }, 150);
       }
     }
     prevCorrectRef.current = latestFeedback.isCorrect;
@@ -138,6 +146,7 @@ export default function PostureCameraScreen() {
     Speech.getAvailableVoicesAsync().catch(() => {});
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      if (speakTimeoutRef.current) clearTimeout(speakTimeoutRef.current);
       Speech.stop();
     };
   }, []);

@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 def _seed_db():
     """
     Seed strategy:
-    - Postures : insert once (never overwrite).
-    - Routines : upsert on every startup — edit here and restart to apply changes.
+    - Postures : insert once (never overwrite) — edit freely in Neon afterwards.
+    - Routines : insert once (never overwrite) — edit freely in Neon afterwards.
     - Live classes : replace on every startup so scheduled times stay in the future.
     """
     from datetime import datetime, timedelta
@@ -92,10 +92,9 @@ def _seed_db():
         # not a static posture) — drop it if it was seeded by an earlier run.
         db.query(Posture).filter(Posture.id == "roll_up").delete()
 
-        # ── Routines (upsert — edit & restart to update) ─────────────────────
-        # To ADD a routine: add a new dict with a unique id.
-        # To EDIT a routine: change any field and restart the backend.
-        # To DELETE a routine: remove the dict (won't auto-delete; do it manually in the DB).
+        # ── Routines (seed once — edit directly in Neon afterwards) ──────────
+        # This only runs the first time (when the table is empty). Once seeded,
+        # add/edit/delete routines straight in Neon; the backend won't touch them again.
         routine_data = [
             {
                 "id": "morning_flow",
@@ -130,8 +129,9 @@ def _seed_db():
                 "enlace": "https://www.youtube.com/watch?v=xCM3ajL6BdE",
             },
         ]
-        for r in routine_data:
-            db.merge(Routine(**r))
+        if db.query(Routine).count() == 0:
+            for r in routine_data:
+                db.add(Routine(**r))
 
         # ── Live classes (replace on every startup so times stay fresh) ───────
         # To ADD a class: add a new dict with a unique id.
@@ -148,7 +148,7 @@ def _seed_db():
                 "scheduled_at": base + timedelta(hours=18),
                 "duration_minutes": 45,
                 "difficulty": "advanced",
-                "enlace": "https://meet.google.com/core-avanzado-hoy",
+                "enlace": "https://meet.google.com/wcn-ncvn-owo",
             },
             {
                 "id": "core_avanzado_paloma",
@@ -157,7 +157,7 @@ def _seed_db():
                 "scheduled_at": base + timedelta(days=1, hours=18),
                 "duration_minutes": 45,
                 "difficulty": "advanced",
-                "enlace": "https://meet.google.com/core-avanzado-paloma",
+                "enlace": "https://meet.google.com/wcn-ncvn-owo",
             },
             {
                 "id": "pilates_suave_manana",
@@ -166,7 +166,7 @@ def _seed_db():
                 "scheduled_at": base + timedelta(days=1, hours=10),
                 "duration_minutes": 30,
                 "difficulty": "beginner",
-                "enlace": "https://meet.google.com/pilates-suave-manana",
+                "enlace": "https://meet.google.com/wcn-ncvn-owo",
             },
             {
                 "id": "stretching_manana",
@@ -175,7 +175,7 @@ def _seed_db():
                 "scheduled_at": base + timedelta(days=1, hours=17),
                 "duration_minutes": 40,
                 "difficulty": "beginner",
-                "enlace": "https://meet.google.com/stretching-manana",
+                "enlace": "https://meet.google.com/wcn-ncvn-owo",
             },
             {
                 "id": "core_intermedio_2d",
@@ -184,7 +184,7 @@ def _seed_db():
                 "scheduled_at": base + timedelta(days=2, hours=9),
                 "duration_minutes": 45,
                 "difficulty": "intermediate",
-                "enlace": "https://meet.google.com/core-intermedio-2d",
+                "enlace": "https://meet.google.com/wcn-ncvn-owo",
             },
             {
                 "id": "pilates_avanzado_2d",
@@ -193,7 +193,7 @@ def _seed_db():
                 "scheduled_at": base + timedelta(days=2, hours=19),
                 "duration_minutes": 60,
                 "difficulty": "advanced",
-                "enlace": "https://meet.google.com/pilates-avanzado-2d",
+                "enlace": "https://meet.google.com/wcn-ncvn-owo",
             },
             {
                 "id": "flujo_matutino_3d",
@@ -202,7 +202,7 @@ def _seed_db():
                 "scheduled_at": base + timedelta(days=3, hours=8),
                 "duration_minutes": 30,
                 "difficulty": "beginner",
-                "enlace": "https://meet.google.com/flujo-matutino-3d",
+                "enlace": "https://meet.google.com/wcn-ncvn-owo",
             },
         ]
         for lc in live_class_data:
