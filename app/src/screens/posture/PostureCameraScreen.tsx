@@ -2,7 +2,7 @@ import React, { useRef, useCallback, useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Image } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useAudioPlayer } from 'expo-audio';
-import * as Speech from 'expo-speech';
+import { warmUp, stopSpeaking, speakCorrection } from '../../services/tts';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { usePostureSession } from '../../hooks/usePostureSession';
@@ -28,7 +28,6 @@ export default function PostureCameraScreen() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevCorrectRef = useRef<boolean | null>(null);
   const lastSpokenRef = useRef<string | null>(null);
-  const speakTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finishingRef = useRef(false);
   const cameraReadyRef = useRef(false);
   const [cameraReadyDisplay, setCameraReadyDisplay] = useState(false);
@@ -47,8 +46,7 @@ export default function PostureCameraScreen() {
 
   const stopSession = useCallback(async () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
-    if (speakTimeoutRef.current) clearTimeout(speakTimeoutRef.current);
-    Speech.stop();
+    stopSpeaking();
     const session = await finish();
     if (session) {
       navigation.replace('PostureResult', { session });
@@ -64,8 +62,7 @@ export default function PostureCameraScreen() {
       lastSpokenRef.current = null;
       if (prevCorrectRef.current !== true) {
         finishingRef.current = true;
-        if (speakTimeoutRef.current) clearTimeout(speakTimeoutRef.current);
-        Speech.stop();
+        stopSpeaking();
         successPlayer.seekTo(0);
         successPlayer.play();
         setTimeout(() => {
@@ -76,16 +73,7 @@ export default function PostureCameraScreen() {
       const message = latestFeedback.corrections[0];
       if (message && message !== lastSpokenRef.current) {
         lastSpokenRef.current = message;
-        if (speakTimeoutRef.current) clearTimeout(speakTimeoutRef.current);
-        Speech.stop();
-        // Chrome/Edge silently drop speak() if it's called synchronously right
-        // after cancel() (crbug.com/679437) — defer it a tick so cancel settles first.
-        speakTimeoutRef.current = setTimeout(() => {
-          Speech.speak(message, {
-            language: 'es-ES',
-            onError: (err) => console.warn('[TTS] speak error', err),
-          });
-        }, 150);
+        speakCorrection(message);
       }
     }
     prevCorrectRef.current = latestFeedback.isCorrect;
@@ -141,13 +129,12 @@ export default function PostureCameraScreen() {
   }, [postureId, begin, analyzeFrame]);
 
   useEffect(() => {
-    // On web, Speech.speak() can silently fail if called before the browser
+    // On web, speech synthesis can silently fail if called before the browser
     // has finished loading its voice list — warm it up as soon as the screen mounts.
-    Speech.getAvailableVoicesAsync().catch(() => {});
+    warmUp();
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      if (speakTimeoutRef.current) clearTimeout(speakTimeoutRef.current);
-      Speech.stop();
+      stopSpeaking();
     };
   }, []);
 
