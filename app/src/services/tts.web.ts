@@ -8,6 +8,14 @@
 let currentUtterance: SpeechSynthesisUtterance | null = null;
 let pendingTimeout: ReturnType<typeof setTimeout> | null = null;
 
+function pickSpanishVoice(): SpeechSynthesisVoice | undefined {
+  const voices = window.speechSynthesis?.getVoices() ?? [];
+  return (
+    voices.find((v) => v.lang.toLowerCase() === 'es-es') ??
+    voices.find((v) => v.lang.toLowerCase().startsWith('es'))
+  );
+}
+
 export function warmUp() {
   window.speechSynthesis?.getVoices();
 }
@@ -36,7 +44,13 @@ export function speakCorrection(text: string) {
   pendingTimeout = setTimeout(() => {
     pendingTimeout = null;
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'es-ES';
+    const voice = pickSpanishVoice();
+    // Setting `lang` alone isn't enough on some devices — if the OS UI language
+    // isn't Spanish, the browser can fall back to the default system voice and
+    // read Spanish text with a foreign accent. Pin an actual Spanish voice when
+    // one is installed.
+    utterance.lang = voice?.lang ?? 'es-ES';
+    if (voice) utterance.voice = voice;
     utterance.onerror = (event) => console.warn('[TTS] speak error', event);
     utterance.onend = () => {
       if (currentUtterance === utterance) currentUtterance = null;
