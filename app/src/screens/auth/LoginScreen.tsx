@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { GoogleSignin, isErrorWithCode, statusCodes } from '../../services/googleSignIn';
 import { authService } from '../../services/authService';
 import { useAuthStore } from '../../store/authStore';
+import { getErrorMessage } from '../../utils/errors';
 import { colors, spacing, radius, typography } from '../../theme';
 
 type RootParamList = { Login: undefined; Register: undefined; ForgotPassword: undefined };
@@ -40,7 +41,7 @@ export default function LoginScreen() {
       await setUser(user, tokens);
     } catch (err) {
       if (!isErrorWithCode(err) || err.code !== statusCodes.SIGN_IN_CANCELLED) {
-        Alert.alert('Error', 'No se pudo iniciar sesión con Google.');
+        Alert.alert('Error', getErrorMessage(err, 'No se pudo iniciar sesión con Google.'));
       }
     } finally {
       setGoogleLoading(false);
@@ -56,8 +57,8 @@ export default function LoginScreen() {
     try {
       const { user, tokens } = await authService.login({ email, password });
       await setUser(user, tokens);
-    } catch {
-      Alert.alert('Error', 'Email o contraseña incorrectos.');
+    } catch (err) {
+      Alert.alert('Error', getErrorMessage(err, 'Email o contraseña incorrectos.'));
     } finally {
       setLoading(false);
     }

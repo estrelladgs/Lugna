@@ -11,6 +11,7 @@ import SkeletonOverlay from '../../components/posture/SkeletonOverlay';
 import { PostureStackParamList } from '../../navigation/PostureNavigator';
 import { POSTURE_GUIDES } from '../../constants/postureGuides';
 import { POSTURE_IMAGES } from '../../constants/postureImages';
+import { consentService } from '../../services/consentService';
 import { colors, spacing, radius, typography } from '../../theme';
 
 type Nav = NativeStackNavigationProp<PostureStackParamList, 'PostureCamera'>;
@@ -31,10 +32,17 @@ export default function PostureCameraScreen() {
   const cameraReadyRef = useRef(false);
   const [cameraReadyDisplay, setCameraReadyDisplay] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
+  const [consentGranted, setConsentGranted] = useState<boolean | null>(null);
+  const [consentSaving, setConsentSaving] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
 
   const successPlayer = useAudioPlayer(require('../../../assets/sounds/success.wav'));
 
   const guide = POSTURE_GUIDES[postureId];
+
+  const handleGoBack = useCallback(() => {
+    navigation.goBack();
+  }, [navigation]);
 
   const stopSession = useCallback(async () => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -128,11 +136,70 @@ export default function PostureCameraScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    consentService.getCameraConsent()
+      .then((status) => { if (!cancelled) setConsentGranted(status.granted); })
+      .catch(() => { if (!cancelled) setConsentGranted(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleAcceptConsent = useCallback(async () => {
+    setConsentSaving(true);
+    setConsentError(null);
+    try {
+      await consentService.recordCameraConsent();
+      setConsentGranted(true);
+    } catch {
+      setConsentError('No se pudo registrar tu consentimiento. Comprueba tu conexión e inténtalo de nuevo.');
+    } finally {
+      setConsentSaving(false);
+    }
+  }, []);
+
+  if (consentGranted === null) return <View style={styles.container} />;
+
+  if (!consentGranted) {
+    return (
+      <View style={styles.permissionContainer}>
+        <TouchableOpacity onPress={handleGoBack} hitSlop={12} style={styles.backRow}>
+          <Text style={styles.backIcon}>‹</Text>
+          <Text style={[typography.label, styles.backLabel]}>Volver</Text>
+        </TouchableOpacity>
+        <Text style={[typography.h3, styles.permissionTitle]}>Antes de activar la cámara</Text>
+        <Text style={[typography.body, styles.permissionText]}>
+          Para corregir tu postura en "{postureName}" necesitamos acceder a la cámara frontal.
+          Los fotogramas se envían a nuestro servidor únicamente para detectar los puntos de tu
+          cuerpo en tiempo real: no se almacenan ni se comparten con nadie, y se descartan
+          inmediatamente después del análisis.
+        </Text>
+        <TouchableOpacity onPress={() => navigation.navigate('PrivacyPolicy')} hitSlop={8}>
+          <Text style={[typography.body, styles.consentLink]}>Ver Política de Privacidad</Text>
+        </TouchableOpacity>
+        {consentError && (
+          <Text style={[typography.caption, styles.consentError]}>{consentError}</Text>
+        )}
+        <TouchableOpacity
+          style={styles.permissionButton}
+          onPress={handleAcceptConsent}
+          activeOpacity={0.85}
+          disabled={consentSaving}
+        >
+          <Text style={typography.button}>{consentSaving ? 'Guardando…' : 'Acepto, continuar'}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   if (!permission) return <View style={styles.container} />;
 
   if (!permission.granted) {
     return (
       <View style={styles.permissionContainer}>
+        <TouchableOpacity onPress={handleGoBack} hitSlop={12} style={styles.backRow}>
+          <Text style={styles.backIcon}>‹</Text>
+          <Text style={[typography.label, styles.backLabel]}>Volver</Text>
+        </TouchableOpacity>
         <Text style={[typography.h3, styles.permissionTitle]}>Acceso a la cámara</Text>
         <Text style={[typography.body, styles.permissionText]}>
           Para corregir tu postura en "{postureName}" necesitamos acceder a la cámara frontal.
@@ -179,6 +246,10 @@ export default function PostureCameraScreen() {
       {showGuide && (
         <View style={styles.guideOverlay}>
           <View style={styles.guideCard}>
+            <TouchableOpacity onPress={handleGoBack} hitSlop={12} style={styles.backRow}>
+              <Text style={styles.backIcon}>‹</Text>
+              <Text style={[typography.label, styles.backLabel]}>Volver</Text>
+            </TouchableOpacity>
             <Text style={[typography.h3, styles.guideTitle]}>{postureName}</Text>
             <Image source={POSTURE_IMAGES[postureId]} style={styles.guideImage} resizeMode="contain" />
             <Text style={[typography.body, styles.guideText]}>{guide.cameraPosition}</Text>
@@ -214,6 +285,24 @@ const styles = StyleSheet.create({
   },
   permissionTitle: { marginBottom: spacing.md, textAlign: 'center' },
   permissionText: { textAlign: 'center', marginBottom: spacing.lg },
+  backRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginBottom: spacing.md,
+  },
+  backIcon: { fontSize: 26, fontWeight: '700', color: colors.link, lineHeight: 28, marginRight: 2 },
+  backLabel: { color: colors.link },
+  consentLink: {
+    color: colors.link,
+    textDecorationLine: 'underline',
+    marginBottom: spacing.lg,
+  },
+  consentError: {
+    color: colors.alert,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+  },
   permissionButton: {
     backgroundColor: colors.white,
     paddingVertical: spacing.md,

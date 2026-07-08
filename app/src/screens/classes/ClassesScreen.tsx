@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, Linking,
+  ActivityIndicator, Linking, Animated,
 } from 'react-native';
 import { getLiveClasses, LiveClass } from '../../services/homeService';
 import { colors, spacing, radius, typography } from '../../theme';
+
+const HEADER_FADE_DISTANCE = 220;
+const DEFAULT_HEADER_HEIGHT = 150;
 
 const DIFFICULTY_LABEL: Record<string, string> = {
   beginner: 'Principiante',
@@ -47,6 +50,8 @@ function ClassCard({ item }: { item: LiveClass }) {
 export default function ClassesScreen() {
   const [classes, setClasses] = useState<LiveClass[]>([]);
   const [loading, setLoading] = useState(true);
+  const [headerHeight, setHeaderHeight] = useState(DEFAULT_HEADER_HEIGHT);
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     getLiveClasses()
@@ -68,13 +73,36 @@ export default function ClassesScreen() {
     );
   }
 
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, HEADER_FADE_DISTANCE],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+  const headerTranslate = scrollY.interpolate({
+    inputRange: [0, HEADER_FADE_DISTANCE],
+    outputRange: [0, -40],
+    extrapolate: 'clamp',
+  });
+
   return (
     <View style={styles.container}>
-      <Text style={[typography.h2, styles.title]}>Clases en Directo</Text>
+      <Animated.View
+        pointerEvents="none"
+        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+        style={[
+          styles.header,
+          { opacity: headerOpacity, transform: [{ translateY: headerTranslate }] },
+        ]}
+      >
+        <Text style={styles.headerTitle}>Clases en Directo</Text>
+        <Text style={styles.headerSubtitle}>
+          Únete a nuestras sesiones en vivo con instructoras certificadas.
+        </Text>
+      </Animated.View>
       <FlatList
         data={classes}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingTop: headerHeight + spacing.md }]}
         renderItem={({ item }) => <ClassCard item={item} />}
         ListEmptyComponent={
           <Text style={[typography.body, styles.empty]}>
@@ -82,6 +110,11 @@ export default function ClassesScreen() {
           </Text>
         }
         showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true },
+        )}
+        scrollEventThrottle={16}
       />
     </View>
   );
@@ -91,8 +124,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: spacing.xl,
-    paddingTop: spacing.xxl + spacing.lg,
   },
   center: {
     flex: 1,
@@ -100,8 +131,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { marginBottom: spacing.lg },
-  list: { gap: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.xxl },
+  header: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    backgroundColor: colors.header,
+    paddingTop: 56,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.lg,
+    borderBottomLeftRadius: radius.md,
+    borderBottomRightRadius: radius.md,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: colors.black,
+    marginBottom: spacing.xs,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: colors.textMuted,
+  },
+  list: { gap: spacing.md, paddingHorizontal: spacing.xl, paddingBottom: spacing.xxl },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: radius.lg,

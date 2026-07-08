@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   Image,
   Linking,
   ScrollView,
@@ -35,6 +36,8 @@ function getYoutubeThumbnail(url?: string): string | null {
 }
 
 type Nav = BottomTabNavigationProp<AppTabParamList>;
+
+const HEADER_FADE_DISTANCE = 220;
 
 // ─── Donut Chart ─────────────────────────────────────────────────────────────
 
@@ -278,6 +281,7 @@ export default function HomeScreen() {
     lastProgramName: null,
   });
   const [continueRoutine, setContinueRoutine] = useState<ContinueRoutine | null>(null);
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   const load = useCallback(async () => {
     // Load last routine from local storage first (instant)
@@ -311,16 +315,27 @@ export default function HomeScreen() {
 
   const firstName = user?.name?.split(' ')[0] ?? 'alumna';
 
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, HEADER_FADE_DISTANCE],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
   return (
-    <ScrollView
+    <Animated.ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.container}
       showsVerticalScrollIndicator={false}
+      onScroll={Animated.event(
+        [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+        { useNativeDriver: true },
+      )}
+      scrollEventThrottle={16}
     >
       {/* Header */}
-      <View style={styles.header}>
+      <Animated.View style={[styles.header, { opacity: headerOpacity }]}>
         <Text style={styles.greeting}>¡Hola, {firstName}!</Text>
-      </View>
+      </Animated.View>
 
       {/* Continue card — overlaps bottom half of header */}
       <View style={styles.continueCardWrapper}>
@@ -395,7 +410,7 @@ export default function HomeScreen() {
 
         <View style={{ height: 100 }} />
       </View>
-    </ScrollView>
+    </Animated.ScrollView>
   );
 }
 
