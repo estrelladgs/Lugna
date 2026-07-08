@@ -27,8 +27,11 @@ export default function SkeletonOverlay({ landmarks, incorrectLandmarks = [] }: 
 
   const isBad = (i: number) => incorrectLandmarks.includes(i);
 
+  // La foto enviada a MediaPipe se captura sin espejar (cámara frontal real),
+  // pero el usuario se ve en pantalla como en un espejo, así que invertimos X
+  // para que el esqueleto coincida con su cuerpo tal como lo percibe.
   const toScreen = (lm: Landmark) => ({
-    x: lm.x * width,
+    x: (1 - lm.x) * width,
     y: lm.y * height,
   });
 
