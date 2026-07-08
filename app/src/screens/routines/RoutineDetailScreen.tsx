@@ -41,15 +41,16 @@ export default function RoutineDetailScreen() {
     }).catch(() => {});
   }, [routine]);
 
-  const handleStart = async () => {
-    try {
-      await routineService.startRoutine(routine.id);
-    } catch {
-      // continue even if server is unreachable
-    }
+  const handleStart = () => {
+    // Open the video immediately, synchronously within the tap handler — on web,
+    // awaiting the tracking call first breaks the user-gesture chain and browsers
+    // silently block the popup.
     if (routine.enlace) {
       Linking.openURL(routine.enlace);
     }
+    routineService.startRoutine(routine.id).catch(() => {
+      // continue even if server is unreachable
+    });
   };
 
   return (
