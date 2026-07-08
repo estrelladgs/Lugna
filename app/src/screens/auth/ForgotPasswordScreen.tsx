@@ -55,6 +55,10 @@ export default function ForgotPasswordScreen() {
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
       >
+        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12} style={styles.back}>
+          <Text style={styles.backText}>‹ Volver</Text>
+        </TouchableOpacity>
+
         <Text style={[typography.h1, styles.title]}>Recuperar contraseña</Text>
 
         {step === 'email' ? (
@@ -134,6 +138,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.xxl,
   },
+  back: { alignSelf: 'flex-start', marginBottom: spacing.md },
+  backText: { fontSize: 15, fontWeight: '600', color: colors.black },
   title: { marginBottom: spacing.lg, textAlign: 'center', fontSize: 34, fontWeight: '700' },
   form: { gap: spacing.xs },
   helper: {
