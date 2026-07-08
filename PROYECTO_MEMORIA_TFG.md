@@ -116,6 +116,40 @@ CameraView (expo-camera, frontal)
 - **Fallback mock del análisis postural**: si MediaPipe no está disponible o el modelo no se
   puede descargar (sin internet en el primer arranque), `analysis.py` cae automáticamente a
   `_mock_response()` para no bloquear el desarrollo/demo (`analysis.py:428-441`).
+- **Login con Google desacoplado por plataforma (`GoogleAuthButton.tsx` / `.web.tsx`)**: la lógica
+  que antes estaba duplicada e inline en `LoginScreen.tsx` y `RegisterScreen.tsx` (~47 líneas cada
+  una) se extrajo a un componente compartido con dos implementaciones que Expo/Metro resuelve por
+  plataforma: en nativo usa `@react-native-google-signin/google-signin`; en web, como ese módulo
+  nativo no existe en el navegador, carga dinámicamente el script de Google Identity Services
+  (`accounts.google.com/gsi/client`) y renderiza su botón oficial, usando
+  `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` como client id — ambas rutas acaban llamando al mismo
+  `POST /auth/google` con el `idToken`/`credential` recibido.
+- **Síntesis de voz multiplataforma (`services/tts.ts` / `tts.web.ts`)**: la llamada directa a
+  `expo-speech` se sustituyó por una capa `warmUp/unlockSpeech/stopSpeaking/speakCorrection` con
+  variante `.web` propia, porque el motor de voz del navegador (Web Speech API) tiene varios
+  comportamientos que `expo-speech` no cubre: Chrome/Edge descartan silenciosamente un `speak()`
+  llamado justo después de `cancel()` (crbug.com/679437, se soluciona difiriendo el `speak()` 150ms),
+  el `SpeechSynthesisUtterance` puede ser recolectado por el GC a mitad de la frase si no se
+  mantiene una referencia fuerte (crbug.com/509488), Safari/iOS solo permite hablar dentro de un
+  gesto de usuario directo (de ahí `unlockSpeech()`, que lanza una locución casi muda al pulsar
+  "Comenzar" para desbloquear el motor durante el resto de la sesión) y fijar solo `lang: 'es-ES'`
+  no garantiza una voz en español si el idioma del sistema operativo no lo es, por lo que se busca
+  explícitamente una voz `es-*` instalada (`voice`/`utterance.voice`) en vez de confiar en el
+  fallback del navegador.
+- **Reflejo del esqueleto sobre la cámara (`SkeletonOverlay.tsx`)**: el fotograma que se envía a
+  MediaPipe se captura sin espejar (la cámara frontal real), pero la usuaria se ve a sí misma
+  reflejada como en un espejo en la pantalla; se invierte la coordenada X (`(1 - lm.x) * width`) al
+  dibujar el esqueleto para que coincida visualmente con el cuerpo tal como lo percibe la usuaria.
+- **Caché local del consentimiento de cámara (`consentService.ts`)**: una vez concedido el
+  consentimiento, se guarda en `AsyncStorage` y se confía en él en aperturas posteriores de la
+  cámara, en vez de volver a consultar `/users/me/consent` cada vez — así un backend lento o caído
+  no obliga a repetir el flujo de consentimiento ya aceptado.
+- **Cambio de estrategia de *seed* de posturas y rutinas (`main.py::_seed_db`)**: pasaron de
+  "upsert en cada arranque" (pensado para editar el catálogo cambiando el código y reiniciando) a
+  "insertar solo si la tabla está vacía", según el comentario del propio código, para poder editar
+  esos datos directamente en la base de datos de producción ("Neon", mencionada en el comentario)
+  sin que un reinicio del backend los sobrescriba. Las clases en directo siguen reemplazándose en
+  cada arranque para mantener sus horarios en el futuro.
 
 ### 1.4 Despliegue (añadido en la fase final del proyecto)
 
@@ -339,9 +373,10 @@ Lugna/
 │   ├── src/
 │   │   ├── screens/              # auth, home, posture, routines, classes, progress, legal, onboarding
 │   │   ├── navigation/           # RootNavigator, AppNavigator (tabs) + stacks anidados por sección
-│   │   ├── services/             # clientes HTTP por dominio + cliente Axios base (api.ts)
+│   │   ├── services/             # clientes HTTP por dominio + cliente Axios base (api.ts),
+│   │   │                          # tts.ts/tts.web.ts (voz de correcciones por plataforma)
 │   │   ├── store/                # authStore, postureStore (Zustand)
-│   │   ├── components/           # auth/, posture/ (overlays), icons/
+│   │   ├── components/           # auth/ (GoogleAuthButton.tsx/.web.tsx), posture/ (overlays), icons/
 │   │   ├── constants/            # guías de postura (texto) e imágenes de referencia
 │   │   ├── hooks/                # usePostureSession, usePostureHistory, useScrollToTopOnFocus
 │   │   ├── utils/                # errors.ts (mapeo de errores Axios), alert.ts (Alert cross-platform)
@@ -388,7 +423,9 @@ Lugna/
 - **Migraciones**: Alembic (`alembic.ini`, `alembic/env.py`, `alembic/versions/001..005`).
 - **Variables de entorno**: `.env` / `.env.example` en el backend; el frontend usa
   `EXPO_PUBLIC_API_URL` opcional (por defecto detecta Android emulator vs localhost,
-  `app/src/services/api.ts:5`). `backend/.env` se llegó a commitear por error en una fase temprana
+  `app/src/services/api.ts:5`) y `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` (client id de Google Identity
+  Services usado solo en la variante web del login con Google, `GoogleAuthButton.web.tsx`).
+  `backend/.env` se llegó a commitear por error en una fase temprana
   del despliegue y se corrigió añadiéndolo a `backend/.gitignore` y quitándolo del repositorio
   (ver sección 5, fase de despliegue) — buena práctica a mencionar en la memoria como lección
   aprendida sobre gestión de secretos.
@@ -451,9 +488,10 @@ apunta a esa URL a través de `EXPO_PUBLIC_API_URL`. Requiere tener `cloudflared
 
 ## 5. HISTORIAL DE DESARROLLO / ITERACIONES
 
-Historial completo (`git log --reverse`), 22 commits entre **2026-05-31** y **2026-07-08**
+Historial completo (`git log --reverse`), 28 commits entre **2026-05-31** y **2026-07-08**
 (≈ 5 semanas y media de desarrollo activo, con una concentración fuerte de commits entre el
-2026-07-01 y el 2026-07-08, día en que además se completó todo el despliegue).
+2026-07-01 y el 2026-07-08, día en que además se completó todo el despliegue y se hizo una ronda
+final de pulido posterior a la demo pública).
 
 | # | Fecha | Commit | Fase |
 |---|---|---|---|
@@ -479,6 +517,12 @@ Historial completo (`git log --reverse`), 22 commits entre **2026-05-31** y **20
 | 20 | 2026-07-08 | `69aed2a` render.yaml | Sprint 7 (despliegue) |
 | 21 | 2026-07-08 | `7c1a640` errores despliegue | Sprint 7 (despliegue) |
 | 22 | 2026-07-08 | `3b89445` arreglos deploy y automatizacion backend | Sprint 7 (despliegue) |
+| 23 | 2026-07-08 | `23010e9` sign in google en web | Sprint 8 (pulido post-despliegue) |
+| 24 | 2026-07-08 | `7cd4e21` permisos de camara y enlaces clases en directo | Sprint 8 (pulido post-despliegue) |
+| 25 | 2026-07-08 | `a5eeecf` voz en correcciones para web | Sprint 8 (pulido post-despliegue) |
+| 26 | 2026-07-08 | `e915afd` arreglo iOS | Sprint 8 (pulido post-despliegue) |
+| 27 | 2026-07-08 | `c8d2fff` reflejo en el esqueleto | Sprint 8 (pulido post-despliegue) |
+| 28 | 2026-07-08 | `17a5500` voces en correccion postural: spanish | Sprint 8 (pulido post-despliegue) |
 
 ### Fases agrupadas
 
@@ -563,6 +607,41 @@ Esta fase es un buen ejemplo, para la memoria, de un requisito no funcional que 
 intentar desplegar de verdad (compatibilidad web, gestión de secretos, restricciones de los
 navegadores) y que no se detecta probando exclusivamente en el emulador/dispositivo nativo.
 
+**Fase 8 — Pulido posterior a la demo pública (23010e9, 7cd4e21, a5eeecf, e915afd, c8d2fff, 17a5500
+— todos el 2026-07-08)**
+Seis commits el mismo día, ya con la demo pública funcionando, centrados en pulir la experiencia
+real detectada al probar la app desde fuera del entorno de desarrollo (navegadores y dispositivos
+distintos a los usados durante el desarrollo):
+1. **`sign in google en web`**: el login con Google, hasta entonces solo nativo
+   (`@react-native-google-signin/google-signin`, no disponible en el build web), se separa en
+   `GoogleAuthButton.tsx` (nativo) y `GoogleAuthButton.web.tsx` (carga el SDK de Google Identity
+   Services en el navegador y renderiza su botón oficial), sustituyendo la lógica que antes estaba
+   duplicada dentro de `LoginScreen.tsx`/`RegisterScreen.tsx`.
+2. **`permisos de camara y enlaces clases en directo`**: se cachea el consentimiento de cámara en
+   `AsyncStorage` para no volver a pedirlo si el backend responde lento; se corrige una fuga de
+   `setTimeout` del aviso hablado al cerrar la sesión de cámara; y se cambia el *seed* de rutinas de
+   "upsert en cada arranque" a "solo si la tabla está vacía", para poder editarlas directamente en
+   la base de datos de producción sin que el backend las sobrescriba al reiniciar.
+3. **`voz en correcciones para web`**: se extrae la lógica de `expo-speech` a
+   `services/tts.ts`/`tts.web.ts`; la variante web corrige que Chrome/Edge descartan un `speak()`
+   llamado justo después de `cancel()` (diferido 150ms) y que la utterance puede perderse por el
+   recolector de basura si no se retiene una referencia.
+4. **`arreglo iOS`**: Safari en iOS solo permite iniciar voz sintetizada dentro de un gesto de
+   usuario directo; se añade `unlockSpeech()` (lanza una locución muda al pulsar "Comenzar") para
+   desbloquear el motor de voz del navegador para el resto de la sesión.
+5. **`reflejo en el esqueleto`**: se invierte el eje X del esqueleto dibujado sobre la cámara para
+   que coincida con la imagen en espejo que la usuaria ve de sí misma (el fotograma enviado al
+   backend no está espejado, pero la vista de cámara sí lo está).
+6. **`voces en correccion postural: spanish`**: tanto en nativo como en web se empieza a buscar y
+   fijar explícitamente una voz instalada en español (`es-*`), en vez de confiar solo en
+   `lang: 'es-ES'`, que en algunos dispositivos con el sistema operativo en otro idioma seguía
+   leyendo las correcciones con acento no español.
+
+Esta fase ilustra un tipo de defecto distinto al de la Fase 7: ya no son errores de compatibilidad
+del *build* web en sí, sino matices de UX que solo se manifiestan al usar la app real en distintos
+navegadores/dispositivos (voz, permisos, orientación visual del esqueleto) — validación en
+condiciones reales tras el despliegue.
+
 ---
 
 ## 6. FUNCIONALIDADES IMPLEMENTADAS (mapeo a módulos)
@@ -570,14 +649,14 @@ navegadores) y que no se detecta probando exclusivamente en el emulador/disposit
 | Funcionalidad | Implementación (frontend) | Implementación (backend) |
 |---|---|---|
 | Registro / login email+contraseña | `RegisterScreen.tsx`, `LoginScreen.tsx`, `authService.ts` | `routers/auth.py` (`/auth/register`, `/auth/login`), bcrypt en `services/auth.py` |
-| Login con Google | `googleSignIn.ts` / `.web.ts`, `LoginScreen.tsx` | `routers/auth.py::google_auth`, verificación con `google-auth` |
+| Login con Google | `GoogleAuthButton.tsx` (nativo, `googleSignIn.ts`) / `GoogleAuthButton.web.tsx` (Google Identity Services JS), usado en `LoginScreen.tsx`/`RegisterScreen.tsx` | `routers/auth.py::google_auth`, verificación con `google-auth` |
 | Recuperación de contraseña | `ForgotPasswordScreen.tsx`, `CodeAndPasswordStep.tsx` | `/auth/password/forgot`, `/auth/password/reset`, `models/password_reset.py`, `services/email.py` |
 | Cambio de contraseña (autenticado) | `ChangePasswordScreen.tsx` | `/users/me` (PATCH) *(nota: no hay endpoint dedicado de cambio de contraseña autenticado en el backend revisado — ver sección de huecos)* |
 | Renovación de sesión (refresh token) | interceptor Axios en `api.ts` | `/auth/refresh`, `decode_token` |
 | Onboarding | `OnboardingScreen.tsx` | — (solo cliente) |
-| Consentimiento de cámara (RGPD) | `PostureCameraScreen.tsx` (pantalla de consentimiento previa), `consentService.ts` | `/users/me/consent` (GET/POST), `models/consent.py` |
-| Corrección postural en tiempo real | `PostureCameraScreen.tsx`, `SkeletonOverlay.tsx`, `FeedbackOverlay.tsx`, `usePostureSession.ts` | `/posture/analyze`, `services/analysis.py` (MediaPipe + 7 analizadores por ejercicio) |
-| Feedback hablado y sonoro | `expo-speech`, `expo-audio` en `PostureCameraScreen.tsx` | — (solo cliente, basado en `corrections[]` devuelto por el backend) |
+| Consentimiento de cámara (RGPD) | `PostureCameraScreen.tsx` (pantalla de consentimiento previa), `consentService.ts` (con caché local en `AsyncStorage` tras la primera concesión) | `/users/me/consent` (GET/POST), `models/consent.py` |
+| Corrección postural en tiempo real | `PostureCameraScreen.tsx`, `SkeletonOverlay.tsx` (esqueleto espejado para coincidir con la vista de la usuaria), `FeedbackOverlay.tsx`, `usePostureSession.ts` | `/posture/analyze`, `services/analysis.py` (MediaPipe + 7 analizadores por ejercicio) |
+| Feedback hablado y sonoro | `services/tts.ts`/`tts.web.ts` (voz por plataforma, con desbloqueo de gesto en iOS Safari y selección explícita de voz en español), `expo-audio` en `PostureCameraScreen.tsx` | — (solo cliente, basado en `corrections[]` devuelto por el backend) |
 | Historial de sesiones posturales | `SessionHistoryScreen.tsx`, `usePostureHistory.ts` | `/posture/sessions` (GET/POST), `models/session.py::PostureSession` |
 | Catálogo de posturas | `PostureSelectScreen.tsx`, `postureGuides.ts`, `postureImages.ts` | `/postures`, `/postures/{id}` |
 | Catálogo de rutinas con filtros (nivel/duración/búsqueda) | `RoutineListScreen.tsx` | `/routines` |
@@ -736,6 +815,31 @@ concurrentes: la primera petición que recibe un 401 dispara el refresh; las que
 tanto se encolan (`refreshQueue`) y se reintentan automáticamente con el nuevo token cuando este
 llega, sin que la usuaria perciba el corte de sesión.
 
+### 7.4 Síntesis de voz multiplataforma (`services/tts.ts` / `tts.web.ts`)
+Capa de abstracción (`warmUp`, `unlockSpeech`, `stopSpeaking`, `speakCorrection`) por encima de
+`expo-speech` (nativo) y de la Web Speech API (`window.speechSynthesis`, en la variante `.web`),
+motivada por varios comportamientos de los navegadores que no tienen equivalente en móvil nativo:
+
+- **Descarte silencioso de `speak()` tras `cancel()`** (Chrome/Edge, crbug.com/679437): al corregir
+  varias veces seguidas se llama a `cancel()` antes de la siguiente frase; si el `speak()` se
+  invoca en el mismo tick, el navegador lo ignora sin lanzar ningún evento de error. Se soluciona
+  difiriendo el `speak()` 150 ms con un `setTimeout` para dar tiempo a que el `cancel()` se asiente.
+- **Recolección de basura de la utterance a mitad de la frase** (crbug.com/509488): si no se
+  mantiene una referencia fuerte al `SpeechSynthesisUtterance`, el motor puede cortar la voz antes
+  de terminar; se retiene en una variable de módulo (`currentUtterance`) hasta el evento `onend`.
+- **Bloqueo por gesto de usuario en iOS Safari**: el motor de voz del navegador solo permite hablar
+  si la primera invocación ocurre síncronamente dentro de un gesto directo (un `tap`); las llamadas
+  posteriores y asíncronas (como las correcciones, que llegan tras la respuesta HTTP del análisis)
+  se descartan si el motor no se "desbloqueó" antes. `unlockSpeech()` lanza una locución con
+  `volume: 0` en el propio `onPress` del botón "Comenzar" para habilitar el resto de la sesión.
+- **Acento incorrecto pese a `lang: 'es-ES'`**: fijar solo el idioma no garantiza una voz en
+  español si el idioma de la interfaz del sistema operativo no lo es; se recorre
+  `getVoices()`/`getAvailableVoicesAsync()` buscando una voz `es-es` (o, si no existe, cualquier
+  `es-*`) y se fija explícitamente vía `utterance.voice` / el parámetro `voice` de `expo-speech`.
+
+Ninguno de estos casos produce un error explícito — todos son fallos silenciosos detectados
+únicamente probando la demo real en distintos navegadores/dispositivos tras el despliegue (Fase 8).
+
 ---
 
 ## 8. PRUEBAS EXISTENTES
@@ -771,20 +875,20 @@ llega, sin que la usuaria perciba el corte de sesión.
 
 | Métrica | Valor |
 |---|---|
-| Commits totales (rama `main`) | 22 |
+| Commits totales (rama `main`) | 28 |
 | Primer commit | 2026-05-31 (`879ce29`) |
-| Último commit | 2026-07-08 (`3b89445`) |
+| Último commit | 2026-07-08 (`17a5500`) |
 | Duración total del desarrollo | ≈ 39 días naturales (~5.5 semanas) |
 | Líneas de código backend (`backend/app/**/*.py`) | ≈ 1.487 líneas (sin contar `test_api.py`) |
-| Líneas de código frontend (`app/src/**/*.ts(x)`) | ≈ 5.587 líneas |
+| Líneas de código frontend (`app/src/**/*.ts(x)`) | ≈ 5.752 líneas |
 | Ficheros de routers backend | 5 (`auth`, `users`, `postures`, `sessions`, `home`) |
 | Endpoints REST totales | 21 |
 | Modelos de datos (tablas) | 7 (`users`, `postures`, `routines`, `live_classes`, `posture_sessions`, `routine_sessions`, `camera_consents`, `password_reset_codes` — 8 tablas) |
 | Migraciones Alembic | 5 (`001` inicial → `005` consentimiento de cámara) |
 | Posturas de corrección postural seeded | 7 |
-| Rutinas de pilates seeded | 4 |
+| Rutinas de pilates seeded | 4 (seed único, editable directamente en producción desde `3b89445`+) |
 | Clases en directo seeded | 7 |
-| Pantallas (screens) del frontend | 20 |
+| Pantallas (screens) del frontend | 17 |
 | Cobertura de tests automatizados | 0% con framework formal; 1 script de humo manual sin asserts |
 | CI/CD | No configurado |
 
@@ -807,6 +911,13 @@ llega, sin que la usuaria perciba el corte de sesión.
   ordenador de la autora esté encendido y el túnel de Cloudflare activo (URL efímera, cambia cada
   vez que se reinicia `iniciar-servidor.ps1`) — limitación a mencionar honestamente en la memoria
   si se presenta como "despliegue en producción".
+- Las 7 clases en directo seeded comparten actualmente el mismo enlace de Google Meet
+  (`https://meet.google.com/wcn-ncvn-owo`, `main.py`, commit `7cd4e21`) en vez de tener cada una su
+  propio enlace — probablemente un valor de marcador de posición pendiente de sustituir por salas
+  reales antes de una demo en directo.
+- `backend/app/__pycache__/*.pyc` está commiteado en el repositorio (no hay `__pycache__` en
+  ningún `.gitignore`) — no afecta al funcionamiento pero es ruido de control de versiones que
+  convendría excluir.
 
 ---
 
