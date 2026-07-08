@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { colors, spacing, radius, typography } from '../../theme';
+import { showAlert } from '../../utils/alert';
 
 export default function CodeAndPasswordStep({
   email,
@@ -21,22 +22,22 @@ export default function CodeAndPasswordStep({
 
   const handleSubmit = async () => {
     if (!code.trim() || !newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Completa todos los campos.');
+      showAlert('Error', 'Completa todos los campos.');
       return;
     }
     if (newPassword.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres.');
+      showAlert('Error', 'La contraseña debe tener al menos 6 caracteres.');
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden.');
+      showAlert('Error', 'Las contraseñas no coinciden.');
       return;
     }
     setSubmitting(true);
     try {
       await onSubmit(code.trim(), newPassword);
     } catch {
-      Alert.alert('Error', 'Código inválido o caducado. Solicita uno nuevo.');
+      showAlert('Error', 'Código inválido o caducado. Solicita uno nuevo.');
     } finally {
       setSubmitting(false);
     }
@@ -46,9 +47,9 @@ export default function CodeAndPasswordStep({
     setResending(true);
     try {
       await onResend();
-      Alert.alert('Código reenviado', `Hemos enviado un nuevo código a ${email}.`);
+      showAlert('Código reenviado', `Hemos enviado un nuevo código a ${email}.`);
     } catch {
-      Alert.alert('Error', 'No se pudo reenviar el código. Inténtalo de nuevo.');
+      showAlert('Error', 'No se pudo reenviar el código. Inténtalo de nuevo.');
     } finally {
       setResending(false);
     }

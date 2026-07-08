@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +15,8 @@ import { GoogleSignin, isErrorWithCode, statusCodes } from '../../services/googl
 import { authService } from '../../services/authService';
 import { useAuthStore } from '../../store/authStore';
 import { getErrorMessage } from '../../utils/errors';
+import { showAlert } from '../../utils/alert';
+import { useScrollToTopOnFocus } from '../../hooks/useScrollToTopOnFocus';
 import { colors, spacing, radius, typography } from '../../theme';
 
 type RootParamList = { Register: undefined; Login: undefined };
@@ -23,6 +24,7 @@ type RootParamList = { Register: undefined; Login: undefined };
 export default function RegisterScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootParamList>>();
   const setUser = useAuthStore((s) => s.setUser);
+  const scrollRef = useScrollToTopOnFocus<ScrollView>();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -43,7 +45,7 @@ export default function RegisterScreen() {
       await setUser(user, tokens);
     } catch (err) {
       if (!isErrorWithCode(err) || err.code !== statusCodes.SIGN_IN_CANCELLED) {
-        Alert.alert('Error', getErrorMessage(err, 'No se pudo iniciar sesión con Google.'));
+        showAlert('Error', getErrorMessage(err, 'No se pudo iniciar sesión con Google.'));
       }
     } finally {
       setGoogleLoading(false);
@@ -52,11 +54,11 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!name || !email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Completa todos los campos.');
+      showAlert('Error', 'Completa todos los campos.');
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden.');
+      showAlert('Error', 'Las contraseñas no coinciden.');
       return;
     }
     setLoading(true);
@@ -64,7 +66,7 @@ export default function RegisterScreen() {
       const { user, tokens } = await authService.register({ name, email, password });
       await setUser(user, tokens);
     } catch (err) {
-      Alert.alert('Error', getErrorMessage(err, 'No se pudo crear la cuenta. Inténtalo de nuevo.'));
+      showAlert('Error', getErrorMessage(err, 'No se pudo crear la cuenta. Inténtalo de nuevo.'));
     } finally {
       setLoading(false);
     }
@@ -73,6 +75,7 @@ export default function RegisterScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../services/authService';
 import CodeAndPasswordStep from '../../components/auth/CodeAndPasswordStep';
 import { ProgressStackParamList } from '../../navigation/ProgressNavigator';
+import { showAlert } from '../../utils/alert';
+import { useScrollToTopOnFocus } from '../../hooks/useScrollToTopOnFocus';
 import { colors, spacing, radius, typography } from '../../theme';
 
 type Nav = NativeStackNavigationProp<ProgressStackParamList, 'ChangePassword'>;
@@ -17,6 +19,7 @@ export default function ChangePasswordScreen() {
 
   const [step, setStep] = useState<'request' | 'code' | 'success'>('request');
   const [sending, setSending] = useState(false);
+  const scrollRef = useScrollToTopOnFocus<ScrollView>();
 
   const handleSendCode = async () => {
     setSending(true);
@@ -24,7 +27,7 @@ export default function ChangePasswordScreen() {
       await authService.forgotPassword(email);
       setStep('code');
     } catch {
-      Alert.alert('Error', 'No se pudo enviar el código. Inténtalo de nuevo.');
+      showAlert('Error', 'No se pudo enviar el código. Inténtalo de nuevo.');
     } finally {
       setSending(false);
     }
@@ -45,6 +48,7 @@ export default function ChangePasswordScreen() {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         style={styles.body}
         contentContainerStyle={styles.bodyContent}
         keyboardShouldPersistTaps="handled"

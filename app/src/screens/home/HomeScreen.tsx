@@ -282,6 +282,7 @@ export default function HomeScreen() {
   });
   const [continueRoutine, setContinueRoutine] = useState<ContinueRoutine | null>(null);
   const scrollY = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<ScrollView>(null);
 
   const load = useCallback(async () => {
     // Load last routine from local storage first (instant)
@@ -309,6 +310,7 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
       load();
     }, [load]),
   );
@@ -323,6 +325,7 @@ export default function HomeScreen() {
 
   return (
     <Animated.ScrollView
+      ref={scrollRef}
       style={styles.scroll}
       contentContainerStyle={styles.container}
       showsVerticalScrollIndicator={false}

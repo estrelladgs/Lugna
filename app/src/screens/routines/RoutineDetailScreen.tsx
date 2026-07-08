@@ -6,6 +6,7 @@ import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { routineService } from '../../services/routineService';
 import { colors, spacing, radius, typography } from '../../theme';
 import { RoutinesStackParamList } from '../../navigation/RoutinesNavigator';
+import { useScrollToTopOnFocus } from '../../hooks/useScrollToTopOnFocus';
 
 type RouteProps = RouteProp<RoutinesStackParamList, 'RoutineDetail'>;
 
@@ -25,6 +26,7 @@ function getYoutubeThumbnail(url?: string): string | null {
 export default function RoutineDetailScreen() {
   const navigation = useNavigation();
   const { params: { routine } } = useRoute<RouteProps>();
+  const scrollRef = useScrollToTopOnFocus<ScrollView>();
 
   const thumbnail = getYoutubeThumbnail(routine.enlace);
 
@@ -51,7 +53,7 @@ export default function RoutineDetailScreen() {
   };
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+    <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.container}>
       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
         <Text style={styles.backText}> ‹ Volver</Text>
       </TouchableOpacity>
