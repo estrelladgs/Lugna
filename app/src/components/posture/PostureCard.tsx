@@ -1,10 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, useWindowDimensions } from 'react-native';
 import { Posture } from '../../types';
 import { colors, spacing, radius, typography } from '../../theme';
 import { POSTURE_IMAGES } from '../../constants/postureImages';
-
-const CARD_WIDTH = (Dimensions.get('window').width - spacing.xl * 2 - spacing.md) / 2;
 
 const DIFFICULTY_LABEL: Record<string, string> = {
   beginner: 'Principiante',
@@ -25,9 +23,11 @@ interface Props {
 
 export default function PostureCard({ posture, onPress }: Props) {
   const badgeColor = DIFFICULTY_COLOR[posture.difficulty] ?? colors.scoreMedium;
+  const { width } = useWindowDimensions();
+  const cardWidth = (width - spacing.xl * 2 - spacing.md) / 2;
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
+    <TouchableOpacity style={[styles.card, { width: cardWidth }]} onPress={onPress} activeOpacity={0.85}>
       <View style={styles.imageWrapper}>
         <Image source={POSTURE_IMAGES[posture.id]} style={styles.image} resizeMode="cover" />
         <View style={[styles.badge, { backgroundColor: badgeColor }]}>
@@ -50,7 +50,6 @@ export default function PostureCard({ posture, onPress }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    width: CARD_WIDTH,
     backgroundColor: '#FFFFFF',
     borderRadius: radius.lg,
     shadowColor: colors.backgroundLight,

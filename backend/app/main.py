@@ -1,10 +1,14 @@
+import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.database import Base, engine, SessionLocal
 from app.routers import auth, home, postures, sessions, users
+
+logger = logging.getLogger(__name__)
 
 
 def _seed_db():
@@ -230,6 +234,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    # Sin este handler, una excepción no controlada se salta el CORSMiddleware
+    # y el navegador la reporta como fallo de CORS en vez de mostrar el error real.
+    logger.exception("Error no controlado en %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Ha ocurrido un error inesperado. Inténtalo de nuevo más tarde."},
+    )
+
 
 app.include_router(auth.router)
 app.include_router(users.router)
