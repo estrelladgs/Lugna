@@ -14,7 +14,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://lugna-api.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://his-lip-environment-dryer.trycloudflare.com"
       }
     },
     "production": {

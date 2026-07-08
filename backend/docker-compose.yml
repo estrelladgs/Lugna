@@ -25,7 +25,7 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://lugna:lugna_pass@db:5432/lugna_db
-      SECRET_KEY: lugna-secret-key-desarrollo-local-2025-cambiar-en-produccion
+      SECRET_KEY: ${SECRET_KEY}
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
       REFRESH_TOKEN_EXPIRE_DAYS: 7
