@@ -2,7 +2,6 @@ services:
   - type: web
     name: lugna-web
     runtime: static
-    plan: free
     rootDir: app
     buildCommand: npm install && npx expo export -p web
     staticPublishPath: dist
