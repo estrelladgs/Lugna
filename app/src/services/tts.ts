@@ -4,6 +4,10 @@ export function warmUp() {
   Speech.getAvailableVoicesAsync().catch(() => {});
 }
 
+export function unlockSpeech() {
+  // No-op on native — the platform TTS engine doesn't need a gesture unlock.
+}
+
 export function stopSpeaking() {
   Speech.stop();
 }
