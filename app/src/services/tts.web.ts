@@ -12,6 +12,16 @@ export function warmUp() {
   window.speechSynthesis?.getVoices();
 }
 
+export function unlockSpeech() {
+  // iOS Safari only allows speak() when it's called synchronously inside a
+  // direct user gesture — every later call (like our async posture
+  // corrections) is silently dropped otherwise. Speak a near-silent utterance
+  // from the "Comenzar" tap to unlock the engine for the rest of the session.
+  const unlock = new SpeechSynthesisUtterance(' ');
+  unlock.volume = 0;
+  window.speechSynthesis?.speak(unlock);
+}
+
 export function stopSpeaking() {
   if (pendingTimeout) {
     clearTimeout(pendingTimeout);

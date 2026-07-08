@@ -2,7 +2,7 @@ import React, { useRef, useCallback, useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Image } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useAudioPlayer } from 'expo-audio';
-import { warmUp, stopSpeaking, speakCorrection } from '../../services/tts';
+import { warmUp, stopSpeaking, speakCorrection, unlockSpeech } from '../../services/tts';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { usePostureSession } from '../../hooks/usePostureSession';
@@ -102,6 +102,7 @@ export default function PostureCameraScreen() {
   }, []);
 
   const startSession = useCallback(() => {
+    unlockSpeech();
     setShowGuide(false);
     prevCorrectRef.current = null;
     lastSpokenRef.current = null;
