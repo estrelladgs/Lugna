@@ -74,7 +74,10 @@ export default function PostureCameraScreen() {
       if (message && message !== lastSpokenRef.current) {
         lastSpokenRef.current = message;
         Speech.stop();
-        Speech.speak(message, { language: 'es-ES' });
+        Speech.speak(message, {
+          language: 'es-ES',
+          onError: (err) => console.warn('[TTS] speak error', err),
+        });
       }
     }
     prevCorrectRef.current = latestFeedback.isCorrect;
@@ -130,6 +133,9 @@ export default function PostureCameraScreen() {
   }, [postureId, begin, analyzeFrame]);
 
   useEffect(() => {
+    // On web, Speech.speak() can silently fail if called before the browser
+    // has finished loading its voice list — warm it up as soon as the screen mounts.
+    Speech.getAvailableVoicesAsync().catch(() => {});
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       Speech.stop();

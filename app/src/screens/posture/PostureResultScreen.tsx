@@ -4,6 +4,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { PostureStackParamList } from '../../navigation/PostureNavigator';
 import { colors, spacing, radius, typography } from '../../theme';
+import { useScrollToTopOnFocus } from '../../hooks/useScrollToTopOnFocus';
 
 type Nav = NativeStackNavigationProp<PostureStackParamList, 'PostureResult'>;
 type Route = RouteProp<PostureStackParamList, 'PostureResult'>;
@@ -11,6 +12,7 @@ type Route = RouteProp<PostureStackParamList, 'PostureResult'>;
 export default function PostureResultScreen() {
   const navigation = useNavigation<Nav>();
   const { params: { session } } = useRoute<Route>();
+  const scrollRef = useScrollToTopOnFocus<ScrollView>();
 
   const minutes = Math.floor(session.durationSeconds / 60);
   const seconds = session.durationSeconds % 60;
@@ -23,7 +25,7 @@ export default function PostureResultScreen() {
       : colors.scoreLow;
 
   return (
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
+    <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.container}>
       <Text style={[typography.h2, styles.title]}>Resumen de sesión</Text>
 
       <View style={styles.scoreCard}>

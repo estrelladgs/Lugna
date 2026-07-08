@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, Alert, ActivityIndicator,
+  ScrollView, ActivityIndicator,
 } from 'react-native';
 import Svg, { Circle, Text as SvgText } from 'react-native-svg';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -11,6 +11,8 @@ import { authService } from '../../services/authService';
 import { getActivity, getProgress } from '../../services/homeService';
 import { RachaIcon } from '../../components/icons/TabIcons';
 import { ProgressStackParamList } from '../../navigation/ProgressNavigator';
+import { showAlert } from '../../utils/alert';
+import { useScrollToTopOnFocus } from '../../hooks/useScrollToTopOnFocus';
 import { colors, spacing, radius, typography } from '../../theme';
 
 type Nav = NativeStackNavigationProp<ProgressStackParamList, 'ProgressHome'>;
@@ -53,6 +55,7 @@ export default function ProgressScreen() {
   const user = useAuthStore((s) => s.user);
   const updateUser = useAuthStore((s) => s.updateUser);
   const logout = useAuthStore((s) => s.logout);
+  const scrollRef = useScrollToTopOnFocus<ScrollView>();
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(user?.name ?? '');
@@ -105,7 +108,7 @@ export default function ProgressScreen() {
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
+    showAlert(
       'Eliminar cuenta',
       '¿Estás segura de que quieres eliminar tu cuenta? Esta acción no se puede deshacer.',
       [
@@ -118,7 +121,7 @@ export default function ProgressScreen() {
               await authService.deleteAccount();
               logout();
             } catch {
-              Alert.alert('Error', 'No se ha podido eliminar la cuenta. Inténtalo de nuevo.');
+              showAlert('Error', 'No se ha podido eliminar la cuenta. Inténtalo de nuevo.');
             }
           },
         },
@@ -134,6 +137,7 @@ export default function ProgressScreen() {
 
   return (
     <ScrollView
+      ref={scrollRef}
       style={styles.scroll}
       contentContainerStyle={styles.container}
       showsVerticalScrollIndicator={false}

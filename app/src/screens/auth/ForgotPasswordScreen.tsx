@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +13,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { authService } from '../../services/authService';
 import CodeAndPasswordStep from '../../components/auth/CodeAndPasswordStep';
+import { showAlert } from '../../utils/alert';
+import { useScrollToTopOnFocus } from '../../hooks/useScrollToTopOnFocus';
 import { colors, spacing, radius, typography } from '../../theme';
 
 type RootParamList = { Login: undefined; ForgotPassword: undefined };
@@ -23,10 +24,11 @@ export default function ForgotPasswordScreen() {
   const [step, setStep] = useState<'email' | 'code' | 'success'>('email');
   const [email, setEmail] = useState('');
   const [sending, setSending] = useState(false);
+  const scrollRef = useScrollToTopOnFocus<ScrollView>();
 
   const handleSendCode = async () => {
     if (!email.trim()) {
-      Alert.alert('Error', 'Introduce tu correo electrónico.');
+      showAlert('Error', 'Introduce tu correo electrónico.');
       return;
     }
     setSending(true);
@@ -34,7 +36,7 @@ export default function ForgotPasswordScreen() {
       await authService.forgotPassword(email.trim());
       setStep('code');
     } catch {
-      Alert.alert('Error', 'No se pudo enviar el código. Inténtalo de nuevo.');
+      showAlert('Error', 'No se pudo enviar el código. Inténtalo de nuevo.');
     } finally {
       setSending(false);
     }
@@ -48,6 +50,7 @@ export default function ForgotPasswordScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"

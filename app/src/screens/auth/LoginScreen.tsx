@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,6 +15,8 @@ import { GoogleSignin, isErrorWithCode, statusCodes } from '../../services/googl
 import { authService } from '../../services/authService';
 import { useAuthStore } from '../../store/authStore';
 import { getErrorMessage } from '../../utils/errors';
+import { showAlert } from '../../utils/alert';
+import { useScrollToTopOnFocus } from '../../hooks/useScrollToTopOnFocus';
 import { colors, spacing, radius, typography } from '../../theme';
 
 type RootParamList = { Login: undefined; Register: undefined; ForgotPassword: undefined };
@@ -23,6 +24,7 @@ type RootParamList = { Login: undefined; Register: undefined; ForgotPassword: un
 export default function LoginScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootParamList>>();
   const setUser = useAuthStore((s) => s.setUser);
+  const scrollRef = useScrollToTopOnFocus<ScrollView>();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,7 +43,7 @@ export default function LoginScreen() {
       await setUser(user, tokens);
     } catch (err) {
       if (!isErrorWithCode(err) || err.code !== statusCodes.SIGN_IN_CANCELLED) {
-        Alert.alert('Error', getErrorMessage(err, 'No se pudo iniciar sesión con Google.'));
+        showAlert('Error', getErrorMessage(err, 'No se pudo iniciar sesión con Google.'));
       }
     } finally {
       setGoogleLoading(false);
@@ -50,7 +52,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Completa todos los campos.');
+      showAlert('Error', 'Completa todos los campos.');
       return;
     }
     setLoading(true);
@@ -58,7 +60,7 @@ export default function LoginScreen() {
       const { user, tokens } = await authService.login({ email, password });
       await setUser(user, tokens);
     } catch (err) {
-      Alert.alert('Error', getErrorMessage(err, 'Email o contraseña incorrectos.'));
+      showAlert('Error', getErrorMessage(err, 'Email o contraseña incorrectos.'));
     } finally {
       setLoading(false);
     }
@@ -67,6 +69,7 @@ export default function LoginScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"

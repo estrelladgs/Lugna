@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, radius, typography } from '../../theme';
+import { useScrollToTopOnFocus } from '../../hooks/useScrollToTopOnFocus';
 
 export interface LegalSection {
   heading: string;
@@ -18,6 +19,7 @@ export default function LegalScreen({
   sections: LegalSection[];
 }) {
   const navigation = useNavigation();
+  const scrollRef = useScrollToTopOnFocus<ScrollView>();
 
   return (
     <View style={styles.container}>
@@ -28,7 +30,7 @@ export default function LegalScreen({
         <Text style={[typography.h2, styles.title]} numberOfLines={1}>{title}</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.updatedAt}>Última actualización: {updatedAt}</Text>
         {sections.map((section, i) => (
           <View key={i} style={styles.section}>
