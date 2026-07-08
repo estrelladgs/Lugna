@@ -117,6 +117,49 @@ CameraView (expo-camera, frontal)
   puede descargar (sin internet en el primer arranque), `analysis.py` cae automáticamente a
   `_mock_response()` para no bloquear el desarrollo/demo (`analysis.py:428-441`).
 
+### 1.4 Despliegue (añadido en la fase final del proyecto)
+
+El proyecto incorpora, además de la ejecución local, un esquema de despliegue pensado para poder
+hacer una demo pública sin contratar hosting de pago para el backend (que necesita MediaPipe/OpenCV,
+pesados para plataformas gratuitas):
+
+```
+┌───────────────────────────┐        túnel HTTPS         ┌──────────────────────────────┐
+│  Backend FastAPI           │◀───────────────────────────│  cloudflared (Cloudflare      │
+│  (equipo local de la       │   cloudflared tunnel --url  │  Tunnel, URL efímera tipo     │
+│  autora, uvicorn :8000)    │   http://localhost:8000     │  *.trycloudflare.com)         │
+└───────────────────────────┘                             └──────────────┬───────────────┘
+                                                                           │  EXPO_PUBLIC_API_URL
+                                                                           ▼
+                                                             ┌──────────────────────────────┐
+                                                             │  Render (render.yaml)         │
+                                                             │  servicio estático "lugna-web"│
+                                                             │  = build web de Expo          │
+                                                             │  (npx expo export -p web)     │
+                                                             └──────────────────────────────┘
+```
+
+- **`render.yaml`**: define un único servicio Render de tipo `web`/`runtime: static` llamado
+  `lugna-web`, con `rootDir: app`, `buildCommand: npm install && npx expo export -p web` y
+  `staticPublishPath: dist`. Es decir, **solo el frontend se despliega en Render** (como sitio
+  estático, la versión web de la app Expo); el backend con MediaPipe sigue corriendo en local.
+- **`iniciar-servidor.ps1` / `Iniciar-Lugna.bat`**: script de automatización que (1) arranca
+  Uvicorn en local, (2) levanta un túnel de Cloudflare (`cloudflared tunnel --url
+  http://localhost:8000`) para exponerlo con HTTPS público, (3) extrae la URL generada del log del
+  túnel, (4) la escribe automáticamente en `app/eas.json` (variable `EXPO_PUBLIC_API_URL` del
+  perfil `preview`) y (5), si existe un fichero local `render-api-key.local.txt` con una API key de
+  Render, actualiza también la variable de entorno `EXPO_PUBLIC_API_URL` del servicio `lugna-web`
+  vía la API REST de Render y dispara un redeploy automático. El `.bat` es solo un lanzador de
+  doble clic del script de PowerShell.
+- **Corrección de seguridad durante el despliegue**: `backend/docker-compose.yml` dejó de tener el
+  `SECRET_KEY` de JWT hardcodeado en texto plano (`SECRET_KEY: lugna-secret-key-...`) y pasó a
+  leerlo de una variable de entorno (`SECRET_KEY: ${SECRET_KEY}`); a la vez, `backend/.env` se
+  eliminó del control de versiones y se añadió a `backend/.gitignore` (antes se llegó a commitear
+  por error). También se añadió `render-api-key.local.txt` al `.gitignore` raíz para no exponer la
+  API key de Render.
+- **Ajustes de compatibilidad web** motivados por este despliegue (el build de Render corre en
+  navegador, no en un runtime nativo de React Native): ver detalle en la sección 6.
+
 ---
 
 ## 2. DISEÑO DE LA PERSISTENCIA
@@ -300,13 +343,13 @@ Lugna/
 │   │   ├── store/                # authStore, postureStore (Zustand)
 │   │   ├── components/           # auth/, posture/ (overlays), icons/
 │   │   ├── constants/            # guías de postura (texto) e imágenes de referencia
-│   │   ├── hooks/                # usePostureSession, usePostureHistory
-│   │   ├── utils/                # errors.ts (mapeo de errores Axios → mensaje de usuario)
+│   │   ├── hooks/                # usePostureSession, usePostureHistory, useScrollToTopOnFocus
+│   │   ├── utils/                # errors.ts (mapeo de errores Axios), alert.ts (Alert cross-platform)
 │   │   └── types/                # tipos TS compartidos (User, Posture, PostureSession...)
 │   ├── assets/                   # imágenes, sonidos (éxito), iconos de la app
 │   ├── android/                  # proyecto nativo Android generado por Expo prebuild
 │   ├── app.json                  # configuración Expo (permisos de cámara, plugins, bundle id)
-│   ├── eas.json                  # perfiles de build EAS
+│   ├── eas.json                  # perfiles de build EAS + URL del túnel para el perfil `preview`
 │   └── package.json
 │
 ├── backend/                      # API (FastAPI)
@@ -322,7 +365,7 @@ Lugna/
 │   │   ├── services/                # analysis.py (MediaPipe), auth.py (JWT/bcrypt), email.py (SMTP)
 │   │   └── ml_models/               # modelo `pose_landmarker_lite.task` descargado en runtime (gitignored)
 │   ├── alembic/                   # migraciones (env.py + versions/001..005)
-│   ├── docker-compose.yml         # Postgres 16 + API en contenedores
+│   ├── docker-compose.yml         # Postgres 16 + API en contenedores (SECRET_KEY vía variable de entorno)
 │   ├── Dockerfile
 │   ├── requirements.txt           # dependencias completas (Docker/producción, incluye mediapipe/psycopg2)
 │   ├── requirements_local.txt     # dependencias ligeras para SQLite local
@@ -330,6 +373,9 @@ Lugna/
 │   ├── test_api.py                # smoke test manual end-to-end contra la API en marcha
 │   └── lugna.db                   # base de datos SQLite de desarrollo
 │
+├── render.yaml                    # configuración del despliegue del frontend web en Render
+├── iniciar-servidor.ps1           # automatiza: backend local + túnel Cloudflare + actualización de URLs
+├── Iniciar-Lugna.bat              # lanzador de doble clic de iniciar-servidor.ps1
 └── README.md
 ```
 
@@ -340,10 +386,17 @@ Lugna/
 - **Gestión de dependencias**: `pip` + `requirements*.txt` (backend), `npm` + `package-lock.json`
   (frontend).
 - **Migraciones**: Alembic (`alembic.ini`, `alembic/env.py`, `alembic/versions/001..005`).
-- **Variables de entorno**: `.env` / `.env.example` en el backend (no versionado el `.env` real);
-  el frontend usa `EXPO_PUBLIC_API_URL` opcional (por defecto detecta Android emulator vs
-  localhost, `app/src/services/api.ts:5`).
+- **Variables de entorno**: `.env` / `.env.example` en el backend; el frontend usa
+  `EXPO_PUBLIC_API_URL` opcional (por defecto detecta Android emulator vs localhost,
+  `app/src/services/api.ts:5`). `backend/.env` se llegó a commitear por error en una fase temprana
+  del despliegue y se corrigió añadiéndolo a `backend/.gitignore` y quitándolo del repositorio
+  (ver sección 5, fase de despliegue) — buena práctica a mencionar en la memoria como lección
+  aprendida sobre gestión de secretos.
 - **Contenedores**: `docker-compose.yml` + `Dockerfile` para levantar Postgres + API.
+- **Despliegue/hosting**: `render.yaml` publica la build web de Expo (`npx expo export -p web`)
+  como sitio estático en Render; el backend (con MediaPipe/OpenCV, demasiado pesado para el plan
+  gratuito de Render) se sigue ejecutando en local y se expone a internet mediante un túnel de
+  Cloudflare (`cloudflared`), automatizado con `iniciar-servidor.ps1`.
 - **Linter/formateo**: no se detectan `.eslintrc`, `.prettierrc` ni configuración de linting en
   ninguno de los dos proyectos — no hay linting automatizado configurado.
 - **Carpeta `.github/modernize/java-upgrade/`**: contiene únicamente scripts (`recordToolUse.ps1`
@@ -383,13 +436,24 @@ npx expo run:android    # o npx expo run:ios
 Requiere `expo-dev-client` (no sirve Expo Go). Para iterar sin módulos nativos:
 `npx expo start --web`.
 
+**Demo pública (despliegue)**
+```powershell
+# Desde la raíz del repo, con el venv del backend ya creado:
+.\Iniciar-Lugna.bat
+```
+Arranca Uvicorn en local, abre un túnel público de Cloudflare hacia `localhost:8000` y actualiza
+automáticamente `app/eas.json` (y, opcionalmente, la variable de entorno del servicio en Render)
+con la nueva URL pública. El frontend web ya desplegado en Render (`lugna-web`, ver `render.yaml`)
+apunta a esa URL a través de `EXPO_PUBLIC_API_URL`. Requiere tener `cloudflared` instalado
+(`winget install --id Cloudflare.cloudflared`).
+
 ---
 
 ## 5. HISTORIAL DE DESARROLLO / ITERACIONES
 
-Historial completo (`git log --reverse`), 15 commits entre **2026-05-31** y **2026-07-08**
+Historial completo (`git log --reverse`), 22 commits entre **2026-05-31** y **2026-07-08**
 (≈ 5 semanas y media de desarrollo activo, con una concentración fuerte de commits entre el
-2026-07-01 y el 2026-07-08).
+2026-07-01 y el 2026-07-08, día en que además se completó todo el despliegue).
 
 | # | Fecha | Commit | Fase |
 |---|---|---|---|
@@ -410,6 +474,11 @@ Historial completo (`git log --reverse`), 15 commits entre **2026-05-31** y **20
 | 15 | 2026-07-07 | `c53598b` recuperación de contraseña (email), historial de correcciones y estadísticas | Sprint 6 |
 | 16 | 2026-07-08 | `1bdf0ab` Consentimiento de cámara, filtros en rutinas y manejo de errores | Sprint 6 |
 | 17 | 2026-07-08 | `b217878` Readme | Cierre/documentación |
+| 18 | 2026-07-08 | `618c736` configuracion de despliegue | Sprint 7 (despliegue) |
+| 19 | 2026-07-08 | `7b1fa23` despliegue 2 | Sprint 7 (despliegue) |
+| 20 | 2026-07-08 | `69aed2a` render.yaml | Sprint 7 (despliegue) |
+| 21 | 2026-07-08 | `7c1a640` errores despliegue | Sprint 7 (despliegue) |
+| 22 | 2026-07-08 | `3b89445` arreglos deploy y automatizacion backend | Sprint 7 (despliegue) |
 
 ### Fases agrupadas
 
@@ -463,6 +532,37 @@ funcionales" (privacidad, resiliencia ante fallos de red) típicos del pulido fi
   estado directamente de `usePostureStore.getState()` en vez de la variable capturada, porque el
   `setInterval` se registraba antes de que el hook re-renderizara con la sesión recién iniciada.
 
+**Fase 7 — Despliegue (618c736, 7b1fa23, 69aed2a, 7c1a640, 3b89445 — todos el 2026-07-08)**
+Cinco commits el mismo día, posteriores al cierre funcional (`b217878 Readme`), dedicados
+íntegramente a publicar una demo accesible por URL en vez de depender solo de builds locales:
+1. **`configuracion de despliegue`**: primera versión de `render.yaml` (51 líneas) para desplegar
+   el frontend web en Render.
+2. **`despliegue 2`**: se simplifica `render.yaml` (de 51 a ~9 líneas), se elimina `backend/.env`
+   del repositorio (estaba commiteado) y se añade a `.gitignore`, y `docker-compose.yml` deja de
+   tener el `SECRET_KEY` en texto plano — corrección de un problema de gestión de secretos
+   detectado al preparar el despliegue público.
+3. **`render.yaml`**: ajuste menor (elimina una línea sobrante).
+4. **`errores despliegue`**: ronda de correcciones de compatibilidad con el build **web** de Expo
+   (hasta entonces la app solo se había probado en Android/iOS nativo): `Alert.alert` es un no-op
+   en `react-native-web`, así que se crea `utils/alert.ts` con un `showAlert()` que hace fallback a
+   `window.alert`/`window.confirm` en web, y se sustituye en 8 pantallas/componentes; se añade
+   `useScrollToTopOnFocus` para que las pantallas con `ScrollView` vuelvan arriba al recibir foco
+   (comportamiento que en nativo se daba gratis pero no en web); se corrige que `Speech.speak()`
+   podía fallar silenciosamente en web si se llamaba antes de que el navegador cargara su lista de
+   voces (se "calienta" con `Speech.getAvailableVoicesAsync()` al montar la pantalla de cámara).
+5. **`arreglos deploy y automatizacion backend`**: se añade `iniciar-servidor.ps1` +
+   `Iniciar-Lugna.bat` para automatizar el arranque del backend, el túnel de Cloudflare y la
+   actualización de la URL pública en `eas.json` (y opcionalmente en Render); y se corrige en
+   `RoutineDetailScreen` que abrir el vídeo de YouTube dejaba de funcionar en navegadores si antes
+   se esperaba (`await`) a una llamada de red — los navegadores bloquean los popups que no ocurren
+   de forma síncrona dentro del gesto de clic del usuario, así que `Linking.openURL` se dispara
+   ahora de forma síncrona y el tracking (`routineService.startRoutine`) queda como llamada en
+   segundo plano sin bloquear.
+
+Esta fase es un buen ejemplo, para la memoria, de un requisito no funcional que solo aparece al
+intentar desplegar de verdad (compatibilidad web, gestión de secretos, restricciones de los
+navegadores) y que no se detecta probando exclusivamente en el emulador/dispositivo nativo.
+
 ---
 
 ## 6. FUNCIONALIDADES IMPLEMENTADAS (mapeo a módulos)
@@ -489,6 +589,8 @@ funcionales" (privacidad, resiliencia ante fallos de red) típicos del pulido fi
 | Baja de cuenta (borrado en cascada) | `ProgressScreen.tsx::handleDeleteAccount` | `/users/me` (DELETE), borra sesiones, consentimientos y códigos |
 | Páginas legales | `LegalScreen.tsx`, `PrivacyPolicyScreen.tsx`, `TermsOfUseScreen.tsx` | — (contenido estático) |
 | Manejo de errores de red/API | `utils/errors.ts`, banners de error en `PostureCameraScreen.tsx` | manejador global de excepciones (`main.py`) |
+| Compatibilidad con build web (demo desplegable) | `utils/alert.ts` (Alert cross-platform), `hooks/useScrollToTopOnFocus.ts`, warm-up de voces TTS en `PostureCameraScreen.tsx`, apertura síncrona de enlaces en `RoutineDetailScreen.tsx` | — (solo cliente) |
+| Despliegue y demo pública | — | `render.yaml` (Render, frontend web estático), `iniciar-servidor.ps1`/`Iniciar-Lugna.bat` (backend local + túnel Cloudflare + actualización automática de URL) |
 
 ### Requisitos no implementados o parciales detectados
 - **Cambio de contraseña autenticado**: existe `ChangePasswordScreen.tsx` en el frontend pero el
@@ -669,12 +771,12 @@ llega, sin que la usuaria perciba el corte de sesión.
 
 | Métrica | Valor |
 |---|---|
-| Commits totales (rama `main`) | 17 |
+| Commits totales (rama `main`) | 22 |
 | Primer commit | 2026-05-31 (`879ce29`) |
-| Último commit | 2026-07-08 (`b217878`) |
+| Último commit | 2026-07-08 (`3b89445`) |
 | Duración total del desarrollo | ≈ 39 días naturales (~5.5 semanas) |
 | Líneas de código backend (`backend/app/**/*.py`) | ≈ 1.487 líneas (sin contar `test_api.py`) |
-| Líneas de código frontend (`app/src/**/*.ts(x)`) | ≈ 5.496 líneas |
+| Líneas de código frontend (`app/src/**/*.ts(x)`) | ≈ 5.587 líneas |
 | Ficheros de routers backend | 5 (`auth`, `users`, `postures`, `sessions`, `home`) |
 | Endpoints REST totales | 21 |
 | Modelos de datos (tablas) | 7 (`users`, `postures`, `routines`, `live_classes`, `posture_sessions`, `routine_sessions`, `camera_consents`, `password_reset_codes` — 8 tablas) |
@@ -696,6 +798,15 @@ llega, sin que la usuaria perciba el corte de sesión.
 - No hay *rate limiting* ni protección explícita contra fuerza bruta en `/auth/login` ni en el
   envío de códigos de recuperación (`/auth/password/forgot`), más allá del TTL de 15 minutos del
   código.
+- El repositorio llegó a tener `backend/.env` (con `SECRET_KEY` y credenciales SMTP) commiteado en
+  un momento dado de la fase de despliegue; se corrigió (fichero eliminado del repo y añadido a
+  `.gitignore`, `SECRET_KEY` movido a variable de entorno en `docker-compose.yml`), pero conviene
+  revisar el historial de git si se va a hacer público el repositorio, ya que el secreto pudo quedar
+  expuesto en commits anteriores aunque ya no esté en el `HEAD` actual.
+- El backend de producción/demo no está desplegado en un servicio gestionado: depende de que el
+  ordenador de la autora esté encendido y el túnel de Cloudflare activo (URL efímera, cambia cada
+  vez que se reinicia `iniciar-servidor.ps1`) — limitación a mencionar honestamente en la memoria
+  si se presenta como "despliegue en producción".
 
 ---
 

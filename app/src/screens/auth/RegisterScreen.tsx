@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { GoogleSignin, isErrorWithCode, statusCodes } from '../../services/googleSignIn';
+import GoogleAuthButton from '../../components/auth/GoogleAuthButton';
 import { authService } from '../../services/authService';
 import { useAuthStore } from '../../store/authStore';
 import { getErrorMessage } from '../../utils/errors';
@@ -31,25 +31,10 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
 
-  const handleGoogleLogin = async () => {
-    setGoogleLoading(true);
-    try {
-      await GoogleSignin.hasPlayServices();
-      const response = await GoogleSignin.signIn();
-      if (response.type !== 'success' || !response.data.idToken) {
-        return;
-      }
-      const { user, tokens } = await authService.googleLogin(response.data.idToken);
-      await setUser(user, tokens);
-    } catch (err) {
-      if (!isErrorWithCode(err) || err.code !== statusCodes.SIGN_IN_CANCELLED) {
-        showAlert('Error', getErrorMessage(err, 'No se pudo iniciar sesión con Google.'));
-      }
-    } finally {
-      setGoogleLoading(false);
-    }
+  const handleGoogleCredential = async (idToken: string) => {
+    const { user, tokens } = await authService.googleLogin(idToken);
+    await setUser(user, tokens);
   };
 
   const handleRegister = async () => {
@@ -133,18 +118,7 @@ export default function RegisterScreen() {
         </Text>
 
         <View style={styles.socialRow}>
-          <TouchableOpacity
-            style={styles.socialButton}
-            activeOpacity={0.8}
-            onPress={handleGoogleLogin}
-            disabled={googleLoading}
-          >
-            {googleLoading ? (
-              <ActivityIndicator color={colors.primary} />
-            ) : (
-              <Text style={styles.socialIcon}>G</Text>
-            )}
-          </TouchableOpacity>
+          <GoogleAuthButton onCredential={handleGoogleCredential} />
         </View>
 
         <TouchableOpacity
@@ -210,17 +184,6 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginTop: spacing.lg,
   },
-  socialButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  socialIcon: { fontSize: 22, fontWeight: '700' },
   button: {
     marginTop: spacing.lg,
     backgroundColor: colors.background,
