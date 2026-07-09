@@ -14,7 +14,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://aug-acre-bill-clarke.trycloudflare.com"
+        "EXPO_PUBLIC_API_URL": "https://theaters-rays-albert-exceed.trycloudflare.com"
       }
     },
     "production": {
