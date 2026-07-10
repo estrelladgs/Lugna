@@ -1,2 +1,6 @@
 app/ml_models/
 .env
+.venv/
+__pycache__/
+*.pyc
+*.db
