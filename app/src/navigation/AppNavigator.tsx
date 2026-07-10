@@ -31,17 +31,20 @@ const TAB_HEIGHT = 64;
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const barHeight = TAB_HEIGHT + insets.bottom;
+  const isOnCameraTab = state.routes[state.index].name === 'Camera';
 
   return (
     <View style={{ overflow: 'visible' }}>
       {/* Floating camera button */}
-      <TouchableOpacity
-        onPress={() => navigation.navigate('Camera')}
-        style={[styles.floatingCamera, { bottom: barHeight + 12 }]}
-        activeOpacity={0.85}
-      >
-        <CamaraIcon size={30} />
-      </TouchableOpacity>
+      {!isOnCameraTab && (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Camera')}
+          style={[styles.floatingCamera, { bottom: barHeight + 12 }]}
+          activeOpacity={0.85}
+        >
+          <CamaraIcon size={30} />
+        </TouchableOpacity>
+      )}
 
       {/* Tab bar — skip hidden tabs */}
       <View style={[styles.tabBar, { height: barHeight, paddingBottom: insets.bottom }]}>
