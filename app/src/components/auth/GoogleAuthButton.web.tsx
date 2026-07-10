@@ -98,11 +98,13 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
     overflow: 'hidden',
   },
   buttonSlot: {
-    width: 52,
-    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   overlay: {
     position: 'absolute',
