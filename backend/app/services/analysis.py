@@ -180,7 +180,7 @@ def _analyze_hundred(lm) -> Dict:
     ankle = _lm(lm, _L_ANKLE)
 
     leg_angle = _angle(hip, knee, ankle)
-    # Legs should be extended (~180°) at ~45° from the floor
+    # Las piernas deben estar extendidas (~180°) a ~45° del suelo
     if leg_angle < 150:
         r.fail(30, "Extiende completamente las piernas.", (_L_HIP, _L_KNEE, _L_ANKLE))
 
@@ -189,10 +189,10 @@ def _analyze_hundred(lm) -> Dict:
         r.fail(30, "Eleva las piernas del suelo; ahora mismo están apoyadas.", (_L_HIP, _L_ANKLE))
 
     shoulder = _lm(lm, _L_SHOULDER)
-    # Head/shoulder should be lifted (lower y value = higher on screen)
+    # La cabeza y los hombros deben estar elevados del suelo, con el mentón hacia el pecho
     if shoulder[1] > hip[1] - 0.05:
         r.fail(30, "Eleva los hombros y la cabeza del suelo; lleva el mentón al pecho.",
-               (_L_SHOULDER,))
+                (_L_SHOULDER,))
 
     wrist = _lm(lm, _L_WRIST)
     if wrist[1] > hip[1]:

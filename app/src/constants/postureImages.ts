@@ -6,7 +6,7 @@ export const POSTURE_IMAGES: Record<PostureId, ImageSourcePropType> = {
   single_leg_circles: require('../../assets/postures/single_leg_circles.jpg'),
   rolling_like_a_ball: require('../../assets/postures/rolling_like_a_ball.jpg'),
   single_leg_stretch: require('../../assets/postures/single_leg_stretch.jpg'),
-  double_leg_stretch: require('../../assets/postures/double_leg_stretch.jpg'),
-  spine_stretch: require('../../assets/postures/spine_stretch.jpg'),
-  plank: require('../../assets/postures/plank.jpg'),
+  double_leg_stretch: require('../../assets/postures/double_leg_stretch.png'),
+  spine_stretch: require('../../assets/postures/spine_stretch.png'),
+  plank: require('../../assets/postures/plank.png'),
 };
