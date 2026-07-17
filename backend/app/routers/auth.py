@@ -80,7 +80,8 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 def google_auth(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
     try:
         claims = verify_google_id_token(payload.idToken)
-    except ValueError:
+    except ValueError as e:
+        print(f"DEBUG google_auth ValueError: {e}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token de Google inválido")
 
     google_id = claims["sub"]

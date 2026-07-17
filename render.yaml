@@ -10,3 +10,6 @@ services:
       # Cambia si reinicias el túnel. Cambiar este valor dispara un rebuild.
       - key: EXPO_PUBLIC_API_URL
         sync: false
+      # Client ID de Google (tipo Web) para el login con Google en la versión web.
+      - key: EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+        sync: false

@@ -14,7 +14,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://hdtv-bracelet-investigated-places.trycloudflare.com"
+        "EXPO_PUBLIC_API_URL": "https://betting-politics-convert-migration.trycloudflare.com"
       }
     },
     "production": {
