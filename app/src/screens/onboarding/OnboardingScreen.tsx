@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,20 @@ import {
   Image,
   useWindowDimensions,
 } from 'react-native';
+import { Asset } from 'expo-asset';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, radius, typography } from '../../theme';
 
 const TOTAL_PAGES = 4;
+
+const ONBOARDING_IMAGES = [
+  require('../../../assets/Logo.png'),
+  require('../../../assets/onboarding1.png'),
+  require('../../../assets/onboarding2.png'),
+  require('../../../assets/onboarding3.png'),
+];
 
 type RootParamList = { Onboarding: undefined; Register: undefined; Login: undefined };
 
@@ -92,6 +100,19 @@ export default function OnboardingScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootParamList>>();
   const { width } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [assetsReady, setAssetsReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    Asset.loadAsync(ONBOARDING_IMAGES)
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setAssetsReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleNext = () => {
     if (currentIndex === 2) {
@@ -103,9 +124,13 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {currentIndex === 0 && <SlideOne width={width} />}
-      {currentIndex === 1 && <SlideTwo width={width} />}
-      {currentIndex === 2 && <SlideThree width={width} />}
+      {assetsReady && (
+        <>
+          {currentIndex === 0 && <SlideOne width={width} />}
+          {currentIndex === 1 && <SlideTwo width={width} />}
+          {currentIndex === 2 && <SlideThree width={width} />}
+        </>
+      )}
 
       <View style={styles.footer}>
         <TouchableOpacity style={styles.button} onPress={handleNext} activeOpacity={0.85}>

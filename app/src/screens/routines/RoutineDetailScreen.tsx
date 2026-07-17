@@ -23,6 +23,10 @@ function getYoutubeThumbnail(url?: string): string | null {
   return `https://img.youtube.com/vi/${match[1]}/maxresdefault.jpg`;
 }
 
+// All routine videos are currently sourced from Anabel Otero's YouTube channel.
+const VIDEO_CREATOR_NAME = 'Anabel Otero';
+const VIDEO_CREATOR_URL = 'https://www.youtube.com/@AnabelOtero';
+
 export default function RoutineDetailScreen() {
   const navigation = useNavigation();
   const { params: { routine } } = useRoute<RouteProps>();
@@ -67,6 +71,14 @@ export default function RoutineDetailScreen() {
         />
       )}
 
+      {routine.enlace && (
+        <TouchableOpacity onPress={() => Linking.openURL(VIDEO_CREATOR_URL)}>
+          <Text style={styles.credit}>
+            Vídeo cortesía de <Text style={styles.creditName}>{VIDEO_CREATOR_NAME}</Text>
+          </Text>
+        </TouchableOpacity>
+      )}
+
       <View style={styles.content}>
         <Text style={[typography.h2, styles.title]}>{routine.name}</Text>
 
@@ -109,6 +121,17 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 220,
     backgroundColor: colors.backgroundLight,
+  },
+  credit: {
+    fontSize: 12,
+    color: colors.black,
+    opacity: 0.5,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xs,
+  },
+  creditName: {
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   content: { padding: spacing.xl },
   title: { marginBottom: spacing.md },
