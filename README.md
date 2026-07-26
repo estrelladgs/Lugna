@@ -16,6 +16,7 @@ App inteligente para la práctica de pilates. Combina rutinas guiadas, clases en
 - [Variables de entorno](#variables-de-entorno)
 - [API — endpoints principales](#api--endpoints-principales)
 - [Notas y limitaciones conocidas](#notas-y-limitaciones-conocidas)
+- [Licencia](#licencia)
 
 ## Características
 
@@ -192,3 +193,7 @@ Consulta `http://localhost:8000/docs` para la referencia completa e interactiva.
 - El análisis postural usa MediaPipe real (`PoseLandmarker`, API "Tasks"); si el modelo no está disponible localmente, cae a un modo *mock* automáticamente.
 - Los fotogramas enviados para el análisis se procesan al vuelo y no se almacenan.
 - El seed de rutinas y clases en directo se sincroniza en cada arranque del backend (editar `setup_local.py`/`main.py` y reiniciar para reflejar cambios).
+
+## Licencia
+
+Todos los derechos reservados. Este repositorio se publica con fines de consulta y evaluación académica (TFG); no se concede ningún permiso de uso, copia, modificación o distribución sin autorización expresa de la autora. Ver [`LICENSE`](./LICENSE).
